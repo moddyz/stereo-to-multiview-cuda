@@ -44,17 +44,17 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
     checkCudaError(cudaMalloc(&d_ad_cost_l, sizeof(float*) * num_disp));
     checkCudaError(cudaMalloc(&d_ad_cost_r, sizeof(float*) * num_disp));
     
-    float** h_cost_l = (float**) malloc(sizeof(float*) * num_disp);
-    float** h_cost_r = (float**) malloc(sizeof(float*) * num_disp);
+    float** h_ad_cost_l = (float**) malloc(sizeof(float*) * num_disp);
+    float** h_ad_cost_r = (float**) malloc(sizeof(float*) * num_disp);
     
     for (int d = 0; d < num_disp; ++d)
     {
-        checkCudaError(cudaMalloc(&h_cost_l[d], sizeof(float) * num_rows * num_cols));
-        checkCudaError(cudaMalloc(&h_cost_r[d], sizeof(float) * num_rows * num_cols));
+        checkCudaError(cudaMalloc(&h_ad_cost_l[d], sizeof(float) * num_rows * num_cols));
+        checkCudaError(cudaMalloc(&h_ad_cost_r[d], sizeof(float) * num_rows * num_cols));
     }
     
-    checkCudaError(cudaMemcpy(d_ad_cost_l, h_cost_l, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
-    checkCudaError(cudaMemcpy(d_ad_cost_r, h_cost_r, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
+    checkCudaError(cudaMemcpy(d_ad_cost_l, h_ad_cost_l, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
+    checkCudaError(cudaMemcpy(d_ad_cost_r, h_ad_cost_r, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
     
     // Launch Kernel
     startCudaTimer(&timer);
