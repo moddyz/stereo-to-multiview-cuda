@@ -3,7 +3,6 @@
 *.lo
 *.lo
 *.o
-program
 
 # Compiled Dynamic Libraries
 *.so
@@ -13,3 +12,13 @@ program
 *.lai
 *.la
 *.a
+
+# Executables
+program
+
+# Swap files
+*.s[a-w][a-z]
+*.un~
+Session.vim
+.netrwhist
+*~
