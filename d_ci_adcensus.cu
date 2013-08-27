@@ -6,6 +6,14 @@
 #include "cuda_utils.h"
 #include <math.h>
 
+__global__ ci_adcensus_kernel(float** ad_cost_l, float** ad_cost_r, float** census_cost_l, float** census_cost_r,
+                              int num_disp, int zero_disp, int num_rows, int num_cols)
+{
+
+
+}
+
+
 void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, float** cost_r, int num_disp, 
                int zero_disp, int num_rows, int num_cols, int elem_sz)
 {
