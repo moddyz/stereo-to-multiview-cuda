@@ -6,10 +6,10 @@
 #include "cuda_utils.h"
 #include <math.h>
 
-__global__ ci_adcensus_kernel(float** ad_cost_l, float** ad_cost_r, float** census_cost_l, float** census_cost_r,
-                              float** adcensus_cost_l, float** adcensus_cost_r,
-                              int inv_ad_coeff, int inv_census_coeff, int num_disp, int zero_disp, 
-                              int num_rows, int num_cols, int elem_sz)
+__global__ void ci_adcensus_kernel(float** ad_cost_l, float** ad_cost_r, float** census_cost_l, float** census_cost_r,
+                                   float** adcensus_cost_l, float** adcensus_cost_r,
+                                   float inv_ad_coeff, float inv_census_coeff, int num_disp, int zero_disp, 
+                                   int num_rows, int num_cols, int elem_sz)
 {
     int tx = threadIdx.x + blockIdx.x * blockDim.x;
     int ty = threadIdx.y + blockIdx.y * blockDim.y;
@@ -19,11 +19,12 @@ __global__ ci_adcensus_kernel(float** ad_cost_l, float** ad_cost_r, float** cens
 
     for (int d = 0; d < num_disp; ++d)
     {
-       float ad_comp_l = 1 - exp(-ad_cost_l[d][tx + ty * num_cols]*inv_ad_coeff);
-       float ad_comp_r = 1 - exp(-ad_cost_r[d][tx + ty * num_cols]*inv_ad_coeff);
+       float ad_comp_l = 1.0 - exp(-ad_cost_l[d][tx + ty * num_cols]*inv_ad_coeff);
+       float ad_comp_r = 1.0 - exp(-ad_cost_r[d][tx + ty * num_cols]*inv_ad_coeff);
 
-       float census_comp_l = 1 - exp(-census_cost_l[d][tx + ty * num_cols]*inv_census_coeff);
-       float census_comp_r = 1 - exp(-census_cost_r[d][tx + ty * num_cols]*inv_census_coeff);
+       float census_comp_l = 1.0 - exp(-census_cost_l[d][tx + ty * num_cols]*inv_census_coeff);
+       float census_comp_r = 1.0 - exp(-census_cost_r[d][tx + ty * num_cols]*inv_census_coeff);
+       //printf("%f %f %f %f\n", ad_comp_l, ad_comp_r, census_comp_l, census_comp_r);
 
        adcensus_cost_l[d][tx + ty * num_cols] = ad_comp_l + census_comp_l;
        adcensus_cost_r[d][tx + ty * num_cols] = ad_comp_r + census_comp_r;
@@ -85,7 +86,7 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
     // Launch Kernel
     startCudaTimer(&timer);
     ci_ad_kernel<<<grid_sz, block_sz>>>(d_img_l, d_img_r, d_ad_cost_l, d_ad_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz);
-    stopCudaTimer(&timer, "Cost Initialization - Absolute Difference Kernel");
+    stopCudaTimer(&timer, "Absolute Difference Kernel");
 
     ////////////
     // CENSUS //

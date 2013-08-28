@@ -81,6 +81,7 @@ int main( int argc, char **argv)
     int num_cols = img_l.cols;
     int elem_sz  = img_l.elemSize();
     printf("rows: %d cols: %d\n", num_rows, num_cols);
+    printf("adcoeff: %f censuscoeff: %f\n", ad_coeff, census_coeff);
     
     // Cost storage intialization
     std::vector<Mat> mat_cost_l;
