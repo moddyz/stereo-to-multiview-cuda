@@ -34,6 +34,9 @@ device.o: $(DEVICE_OBJECTS)
 	$(NVCC) $(NVCC_OPTS) -dlink $(DEVICE_OBJECTS) -o device.o
 
 # Device Objects
+d_ca_cross.o: d_ca_cross.cu d_ca_cross.h cuda_utils.h
+	$(NVCC) -dc d_ca_cross.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)
+
 d_ci_adcensus.o: d_ci_adcensus.cu d_ci_adcensus.h cuda_utils.h d_ci_ad.o d_ci_census.o
 	$(NVCC) -dc d_ci_adcensus.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)
 
