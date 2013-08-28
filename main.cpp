@@ -6,6 +6,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv/cvaux.h>
+#include "d_ci_adcensus.h"
 #include "d_ci_census.h"
 #include "d_ci_ad.h"
 #include "d_tx_scale.h"
@@ -36,11 +37,11 @@ void printMatInfo(Mat mat, char *mat_name)
 
 int main( int argc, char **argv)
 {
-    if (argc != 5) 
+    if (argc != 7) 
     {
         printf("Place images in img subdir: \n");
         printf("then input file names directly w/o dir extension \n");
-        printf("Usage: ./program [left file] [right file] [ndisp] [zerodisp]\n");
+        printf("Usage: ./program [left file] [right file] [ad coeff] [census coeff] [ndisp] [zerodisp]\n");
         return -1;
     } 
     
@@ -57,8 +58,10 @@ int main( int argc, char **argv)
     printf("Reading %s...\n", full_file_r);
 
     // Parameter Parsing
-    int num_disp = atoi(argv[3]);
-    int zero_disp = atoi(argv[4]);
+    float ad_coeff = atof(argv[3]);
+    float census_coeff = atof(argv[4]);
+    int num_disp = atoi(argv[5]);
+    int zero_disp = atoi(argv[6]);
     
     // Read Images
     Mat img_l = imread(full_file_l, CV_LOAD_IMAGE_COLOR);
@@ -98,7 +101,7 @@ int main( int argc, char **argv)
     
     // Cost Initiation
     printDeviceInfo();
-    ci_census(data_img_l, data_img_r, data_cost_l, data_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz);
+    ci_adcensus(data_img_l, data_img_r, data_cost_l, data_cost_r, ad_coeff, census_coeff, num_disp, zero_disp, num_rows, num_cols, elem_sz);
 
     for (int d = 0; d < num_disp; ++d)
     {
@@ -135,7 +138,6 @@ int main( int argc, char **argv)
         }
 
     }
-
 
     free(data_cost_l); 
     free(data_cost_r); 
