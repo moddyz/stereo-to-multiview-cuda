@@ -38,7 +38,7 @@ void printMatInfo(Mat mat, char *mat_name)
 
 int main( int argc, char **argv)
 {
-    if (argc != 7) 
+    if (argc != 11) 
     {
         printf("Place images in img subdir: \n");
         printf("then input file names directly w/o dir extension \n");

@@ -34,7 +34,7 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
         if (ty - y < 0)
             break;
         
-        cross[CROSS_ARM_UP][tx + ty * num_cols] = y;
+        cross[CROSS_ARM_UP][tx + ty * num_cols] = (unsigned char) y;
         
         int c_color_b = (int) img[(tx + (ty - y) * num_cols) * elem_sz];
         int c_color_g = (int) img[(tx + (ty - y) * num_cols) * elem_sz + 1];
@@ -65,7 +65,7 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
         if (ty + y < 0)
             break;
         
-        cross[CROSS_ARM_DOWN][tx + ty * num_cols] = y;
+        cross[CROSS_ARM_DOWN][tx + ty * num_cols] = (unsigned char) y;
         
         int c_color_b = (int) img[(tx + (ty + y) * num_cols) * elem_sz];
         int c_color_g = (int) img[(tx + (ty + y) * num_cols) * elem_sz + 1];
@@ -96,7 +96,7 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
         if (tx - x < 0)
             break;
         
-        cross[CROSS_ARM_LEFT][tx + ty * num_cols] = x;
+        cross[CROSS_ARM_LEFT][tx + ty * num_cols] = (unsigned char) x;
         
         int c_color_b = (int) img[(tx - x + ty * num_cols) * elem_sz];
         int c_color_g = (int) img[(tx - x + ty * num_cols) * elem_sz + 1];
@@ -127,7 +127,7 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
         if (tx + x < 0)
             break;
         
-        cross[CROSS_ARM_RIGHT][tx + ty * num_cols] = x;
+        cross[CROSS_ARM_RIGHT][tx + ty * num_cols] = (unsigned char) x;
         
         int c_color_b = (int) img[(tx + x + ty * num_cols) * elem_sz];
         int c_color_g = (int) img[(tx + x + ty * num_cols) * elem_sz + 1];
@@ -208,6 +208,10 @@ void ca_cross(unsigned char* img_l, unsigned char* img_r, float** cost_l, float*
     startCudaTimer(&timer);
     ca_cross_construction_kernel<<<grid_sz, block_sz>>>(d_img_r, d_cross_r, ucd, lcd, usd, lsd, num_rows, num_cols, elem_sz);
     stopCudaTimer(&timer, "Cross Aggragation - Cross Construciton Kernel");
+    
+    ///////////////////////////
+    // CROSS-AGGRAGATE COSTS // 
+    ///////////////////////////
 
     ///////////////////
     // DE-ALLOCATION // 
