@@ -199,8 +199,8 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
     }
 }
 
-void ca_cross(unsigned char* img_l, unsigned char* img_r, float** cost_l, float** cost_r,
-              float** acost_l, float** acost_r, float ucd, float lcd, int usd, int lsd,
+void ca_cross(unsigned char* img, float** cost, float** acost,
+              float ucd, float lcd, int usd, int lsd,
               int num_disp, int num_rows, int num_cols, int elem_sz)
 {
     cudaEventPair_t timer;
@@ -220,133 +220,92 @@ void ca_cross(unsigned char* img_l, unsigned char* img_r, float** cost_l, float*
     // CROSS CONSTRUCTION //
     ////////////////////////
 
-    unsigned char* d_img_l;
-    unsigned char* d_img_r;
+    unsigned char* d_img;
 
-    checkCudaError(cudaMalloc(&d_img_l, sizeof(unsigned char) * num_rows * num_cols * elem_sz));
-    checkCudaError(cudaMalloc(&d_img_r, sizeof(unsigned char) * num_rows * num_cols * elem_sz));
-
-    checkCudaError(cudaMemcpy(d_img_l, img_l, sizeof(unsigned char) * num_rows * num_cols * elem_sz, cudaMemcpyHostToDevice));
-    checkCudaError(cudaMemcpy(d_img_r, img_r, sizeof(unsigned char) * num_rows * num_cols * elem_sz, cudaMemcpyHostToDevice));
+    checkCudaError(cudaMalloc(&d_img, sizeof(unsigned char) * num_rows * num_cols * elem_sz));
+    checkCudaError(cudaMemcpy(d_img, img, sizeof(unsigned char) * num_rows * num_cols * elem_sz, cudaMemcpyHostToDevice));
    
-    unsigned char** d_cross_l;
-    unsigned char** d_cross_r;
-    checkCudaError(cudaMalloc(&d_cross_l, sizeof(unsigned char*) * CROSS_ARM_COUNT));
-    checkCudaError(cudaMalloc(&d_cross_r, sizeof(unsigned char*) * CROSS_ARM_COUNT));
+    unsigned char** d_cross;
+    checkCudaError(cudaMalloc(&d_cross, sizeof(unsigned char*) * CROSS_ARM_COUNT));
 
-    unsigned char** h_cross_l = (unsigned char**) malloc(sizeof(unsigned char*) * CROSS_ARM_COUNT);
-    unsigned char** h_cross_r = (unsigned char**) malloc(sizeof(unsigned char*) * CROSS_ARM_COUNT);
+    unsigned char** h_cross = (unsigned char**) malloc(sizeof(unsigned char*) * CROSS_ARM_COUNT);
     
     for (int i = 0; i < CROSS_ARM_COUNT; ++i)
     {
-        checkCudaError(cudaMalloc(&h_cross_l[i], sizeof(unsigned char) * num_rows * num_cols));
-        checkCudaError(cudaMalloc(&h_cross_r[i], sizeof(unsigned char) * num_rows * num_cols));
+        checkCudaError(cudaMalloc(&h_cross[i], sizeof(unsigned char) * num_rows * num_cols));
     }
 
-    checkCudaError(cudaMemcpy(d_cross_l, h_cross_l, sizeof(unsigned char*) * CROSS_ARM_COUNT, cudaMemcpyHostToDevice));
-    checkCudaError(cudaMemcpy(d_cross_r, h_cross_r, sizeof(unsigned char*) * CROSS_ARM_COUNT, cudaMemcpyHostToDevice));
+    checkCudaError(cudaMemcpy(d_cross, h_cross, sizeof(unsigned char*) * CROSS_ARM_COUNT, cudaMemcpyHostToDevice));
     
     // Launch kernel
     startCudaTimer(&timer);
-    ca_cross_construction_kernel<<<grid_sz, block_sz>>>(d_img_l, d_cross_l, ucd, lcd, usd, lsd, num_rows, num_cols, elem_sz);
-    stopCudaTimer(&timer, "Cross Aggragation - Cross Construciton Kernel");
-    
-    startCudaTimer(&timer);
-    ca_cross_construction_kernel<<<grid_sz, block_sz>>>(d_img_r, d_cross_r, ucd, lcd, usd, lsd, num_rows, num_cols, elem_sz);
+    ca_cross_construction_kernel<<<grid_sz, block_sz>>>(d_img, d_cross, ucd, lcd, usd, lsd, num_rows, num_cols, elem_sz);
     stopCudaTimer(&timer, "Cross Aggragation - Cross Construciton Kernel");
     
     ///////////////////////////
     // CROSS-AGGRAGATE COSTS // 
     ///////////////////////////
-    float** d_cost_l;
-    float** d_cost_r;
+    float** d_cost;
 
-    checkCudaError(cudaMalloc(&d_cost_l, sizeof(float*) * num_disp));
-    checkCudaError(cudaMalloc(&d_cost_r, sizeof(float*) * num_disp));
+    checkCudaError(cudaMalloc(&d_cost, sizeof(float*) * num_disp));
 
-    float** h_cost_l = (float**) malloc(sizeof(float*) * num_disp);
-    float** h_cost_r = (float**) malloc(sizeof(float*) * num_disp);
+    float** h_cost = (float**) malloc(sizeof(float*) * num_disp);
     
     for (int d = 0; d < num_disp; ++d)
     {
-        checkCudaError(cudaMalloc(&h_cost_l[d], sizeof(float) * num_rows * num_cols));
-        checkCudaError(cudaMalloc(&h_cost_r[d], sizeof(float) * num_rows * num_cols));
-        checkCudaError(cudaMemcpy(h_cost_l[d], cost_l[d], sizeof(float) * num_rows * num_cols, cudaMemcpyHostToDevice));
-        checkCudaError(cudaMemcpy(h_cost_r[d], cost_r[d], sizeof(float) * num_rows * num_cols, cudaMemcpyHostToDevice));
+        checkCudaError(cudaMalloc(&h_cost[d], sizeof(float) * num_rows * num_cols));
+        checkCudaError(cudaMemcpy(h_cost[d], cost[d], sizeof(float) * num_rows * num_cols, cudaMemcpyHostToDevice));
     }
 
-    checkCudaError(cudaMemcpy(d_cost_l, h_cost_l, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
-    checkCudaError(cudaMemcpy(d_cost_r, h_cost_r, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
+    checkCudaError(cudaMemcpy(d_cost, h_cost, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
 
     
-    float** d_acost_l;
-    float** d_acost_r;
-    checkCudaError(cudaMalloc(&d_acost_l, sizeof(float*) * num_disp));
-    checkCudaError(cudaMalloc(&d_acost_r, sizeof(float*) * num_disp));
+    float** d_acost;
+    checkCudaError(cudaMalloc(&d_acost, sizeof(float*) * num_disp));
 
-    float** h_acost_l = (float**) malloc(sizeof(float*) * num_disp);
-    float** h_acost_r = (float**) malloc(sizeof(float*) * num_disp);
+    float** h_acost = (float**) malloc(sizeof(float*) * num_disp);
     
     for (int d = 0; d < num_disp; ++d)
     {
-        checkCudaError(cudaMalloc(&h_acost_l[d], sizeof(float) * num_rows * num_cols));
-        checkCudaError(cudaMalloc(&h_acost_r[d], sizeof(float) * num_rows * num_cols));
+        checkCudaError(cudaMalloc(&h_acost[d], sizeof(float) * num_rows * num_cols));
     }
 
-    checkCudaError(cudaMemcpy(d_acost_l, h_acost_l, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
-    checkCudaError(cudaMemcpy(d_acost_r, h_acost_r, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
+    checkCudaError(cudaMemcpy(d_acost, h_acost, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
     
     // Launch Kernel
 
     // Left
     startCudaTimer(&timer);
-    ca_cross_hsum_kernel<<<grid_sz, block_sz>>>(d_cost_l, d_acost_l, d_cross_l, num_disp, num_rows, num_cols); 
-    stopCudaTimer(&timer, "Cross Horizontal Sum - Left");
+    ca_cross_hsum_kernel<<<grid_sz, block_sz>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols); 
+    stopCudaTimer(&timer, "Cross Horizontal Sum");
     
     startCudaTimer(&timer);
-    ca_cross_vsum_kernel<<<grid_sz, block_sz>>>(d_acost_l, d_cost_l, d_cross_l, num_disp, num_rows, num_cols); 
-    stopCudaTimer(&timer, "Cross Vertical Sum - Left");
-    // Right
-    startCudaTimer(&timer);
-    ca_cross_hsum_kernel<<<grid_sz, block_sz>>>(d_cost_r, d_acost_r, d_cross_r, num_disp, num_rows, num_cols); 
-    stopCudaTimer(&timer, "Cross Horizontal Sum - Right");
-    
-    startCudaTimer(&timer);
-    ca_cross_vsum_kernel<<<grid_sz, block_sz>>>(d_acost_r, d_cost_r, d_cross_r, num_disp, num_rows, num_cols); 
-    stopCudaTimer(&timer, "Cross Vertical Sum - Right");
+    ca_cross_vsum_kernel<<<grid_sz, block_sz>>>(d_acost, d_cost, d_cross, num_disp, num_rows, num_cols); 
+    stopCudaTimer(&timer, "Cross Vertical Sum");
     
     for (int d = 0; d < num_disp; ++d)
     {
-        checkCudaError(cudaMemcpy(acost_l[d], h_cost_l[d], sizeof(float) * num_cols * num_rows, cudaMemcpyDeviceToHost));
-        checkCudaError(cudaMemcpy(acost_r[d], h_cost_r[d], sizeof(float) * num_cols * num_rows, cudaMemcpyDeviceToHost));
+        checkCudaError(cudaMemcpy(acost[d], h_cost[d], sizeof(float) * num_cols * num_rows, cudaMemcpyDeviceToHost));
     }
     
      ///////////////////
     // DE-ALLOCATION // 
     ///////////////////
 
-    cudaFree(d_img_l);
-    cudaFree(d_img_r);
-    cudaFree(d_cross_l);
-    cudaFree(d_cross_r);
-    cudaFree(d_cost_l);
-    cudaFree(d_cost_r);
-    cudaFree(d_acost_l);
-    cudaFree(d_acost_r);
+    cudaFree(d_img);
+    cudaFree(d_cross);
+    cudaFree(d_cost);
+    cudaFree(d_acost);
     for (int d = 0; d < num_disp; ++d)
     {
-        cudaFree(h_cost_l[d]);
-        cudaFree(h_cost_r[d]);
-        cudaFree(h_acost_l[d]);
-        cudaFree(h_acost_r[d]);
+        cudaFree(h_cost[d]);
+        cudaFree(h_acost[d]);
     }
     for (int i = 0; i < CROSS_ARM_COUNT; ++i)
     {
-        cudaFree(h_cross_l[i]);
-        cudaFree(h_cross_r[i]);
+        cudaFree(h_cross[i]);
     }
-    free(h_cross_l);
-    free(h_cross_r);
+    free(h_cross);
 }
 
 #endif

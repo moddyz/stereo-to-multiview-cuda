@@ -134,8 +134,10 @@ int main( int argc, char **argv)
 	int usd = atoi(argv[9]);
 	int lsd = atoi(argv[10]);
 	
-	ca_cross(data_img_l, data_img_r, data_cost_l, data_cost_r, data_acost_l, data_acost_r, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
+	ca_cross(data_img_l, data_cost_l, data_acost_l, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
 
+	ca_cross(data_img_r, data_cost_r, data_acost_r, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
+	
 	// Equalize Images for Display
     for (int d = 0; d < num_disp; ++d)
     {
