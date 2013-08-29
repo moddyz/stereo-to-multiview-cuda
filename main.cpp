@@ -210,7 +210,7 @@ int main( int argc, char **argv)
 					printf("Showing Right Cost Disparity Level: %d\n", disp_level - zero_disp + 1);
 				}
 				break;
-			case DISPLAY_MODE_COST:
+			case DISPLAY_MODE_ACOST:
 				if (display_persp == DISPLAY_PERSP_LEFT)
 				{
 					imshow("Display", mat_acost_l[disp_level]);

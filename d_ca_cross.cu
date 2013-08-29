@@ -261,16 +261,18 @@ void ca_cross(unsigned char* img_l, unsigned char* img_r, float** cost_l, float*
     float** d_cost_l;
     float** d_cost_r;
 
-    checkCudaError(cudaMalloc(&d_acost_l, sizeof(float*) * num_disp));
-    checkCudaError(cudaMalloc(&d_acost_r, sizeof(float*) * num_disp));
+    checkCudaError(cudaMalloc(&d_cost_l, sizeof(float*) * num_disp));
+    checkCudaError(cudaMalloc(&d_cost_r, sizeof(float*) * num_disp));
 
     float** h_cost_l = (float**) malloc(sizeof(float*) * num_disp);
     float** h_cost_r = (float**) malloc(sizeof(float*) * num_disp);
     
     for (int d = 0; d < num_disp; ++d)
     {
-        checkCudaError(cudaMemcpy(h_cost_l[d], cost_l, sizeof(float) * num_rows * num_cols), cudaMemcpyHostToDevice);
-        checkCudaError(cudaMemcpy(h_cost_r[d], cost_r, sizeof(float) * num_rows * num_cols), cudaMemcpyHostToDevice);
+        checkCudaError(cudaMalloc(&h_cost_l[d], sizeof(float) * num_rows * num_cols));
+        checkCudaError(cudaMalloc(&h_cost_r[d], sizeof(float) * num_rows * num_cols));
+        checkCudaError(cudaMemcpy(h_cost_l[d], cost_l[d], sizeof(float) * num_rows * num_cols, cudaMemcpyHostToDevice));
+        checkCudaError(cudaMemcpy(h_cost_r[d], cost_r[d], sizeof(float) * num_rows * num_cols, cudaMemcpyHostToDevice));
     }
 
     checkCudaError(cudaMemcpy(d_cost_l, h_cost_l, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
@@ -298,19 +300,19 @@ void ca_cross(unsigned char* img_l, unsigned char* img_r, float** cost_l, float*
 
     // Left
     startCudaTimer(&timer);
-    ca_cross_hsum<<<grid_sz, block_sz>>>(d_cost_l, d_acost_l, d_cross_l, num_disp, num_rows, num_cols); 
+    ca_cross_hsum_kernel<<<grid_sz, block_sz>>>(d_cost_l, d_acost_l, d_cross_l, num_disp, num_rows, num_cols); 
     stopCudaTimer(&timer, "Cross Horizontal Sum - Left");
     
     startCudaTimer(&timer);
-    ca_cross_vsum<<<grid_sz, block_sz>>>(d_acost_l, d_cost_l, d_cross_l, num_disp, num_rows, num_cols); 
+    ca_cross_vsum_kernel<<<grid_sz, block_sz>>>(d_acost_l, d_cost_l, d_cross_l, num_disp, num_rows, num_cols); 
     stopCudaTimer(&timer, "Cross Vertical Sum - Left");
     // Right
     startCudaTimer(&timer);
-    ca_cross_hsum<<<grid_sz, block_sz>>>(d_cost_r, d_acost_r, d_cross_r, num_disp, num_rows, num_cols); 
+    ca_cross_hsum_kernel<<<grid_sz, block_sz>>>(d_cost_r, d_acost_r, d_cross_r, num_disp, num_rows, num_cols); 
     stopCudaTimer(&timer, "Cross Horizontal Sum - Right");
     
     startCudaTimer(&timer);
-    ca_cross_vsum<<<grid_sz, block_sz>>>(d_acost_r, d_cost_r, d_cross_r, num_disp, num_rows, num_cols); 
+    ca_cross_vsum_kernel<<<grid_sz, block_sz>>>(d_acost_r, d_cost_r, d_cross_r, num_disp, num_rows, num_cols); 
     stopCudaTimer(&timer, "Cross Vertical Sum - Right");
     
     for (int d = 0; d < num_disp; ++d)
