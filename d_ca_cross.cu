@@ -8,7 +8,8 @@
 
 
 void ca_cross(unsigned char* img_l, unsigned char* img_r, float** cost_l, float** cost_r,
-              float** acost_l, float** acost_r, float ucd, float lcd, int usd, int lsd);
+              float** acost_l, float** acost_r, float ucd, float lcd, int usd, int lsd,
+              int num_rows, int num_cols );
 {
     cudaEventPair_t timer;
     
@@ -18,6 +19,8 @@ void ca_cross(unsigned char* img_l, unsigned char* img_r, float** cost_l, float*
 
     unsigned char* d_img_l;
     unsigned char* d_img_r;
+
+    cudaCheckError(cudaMalloc(&d_img_l, sizeof(
 
 }
 

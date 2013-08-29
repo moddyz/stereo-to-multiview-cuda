@@ -49,7 +49,7 @@ __global__ void mux_multiview_kernel(unsigned char** views, unsigned char* outpu
 }
 
 void d_mux_multiview( unsigned char **views, unsigned char* out_data, int num_views, float angle, 
-				      int in_width, int in_height, int out_width, int out_height, int elem_sz)
+				      int in_rows, int in_cols, int out_rows, int out_cols, int elem_sz)
 {
     cudaEventPair_t timer;
 	// Memory Allocation of Input
@@ -59,33 +59,33 @@ void d_mux_multiview( unsigned char **views, unsigned char* out_data, int num_vi
 	unsigned char** h_views = (unsigned char**) malloc(sizeof(unsigned char**) * num_views);
 	for (int v = 0; v < num_views; ++v)
 	{
-		checkCudaError(cudaMalloc(&h_views[v], sizeof(unsigned char) * in_width * in_height * elem_sz));
-		checkCudaError(cudaMemcpy(h_views[v], views[v], sizeof(unsigned char) * in_width * in_height * elem_sz, cudaMemcpyHostToDevice));
+		checkCudaError(cudaMalloc(&h_views[v], sizeof(unsigned char) * in_cols * in_rows * elem_sz));
+		checkCudaError(cudaMemcpy(h_views[v], views[v], sizeof(unsigned char) * in_cols * in_rows * elem_sz, cudaMemcpyHostToDevice));
 	}
 	checkCudaError(cudaMemcpy(d_views, h_views, sizeof(unsigned char *) * num_views, cudaMemcpyHostToDevice));
 
 	// Memory Allocation of Output
 	unsigned char* d_out_data;
-	checkCudaError(cudaMalloc(&d_out_data, sizeof(unsigned char) * out_width * out_height * elem_sz));
+	checkCudaError(cudaMalloc(&d_out_data, sizeof(unsigned char) * out_cols * out_rows * elem_sz));
     
 	// Setup Block & Grid Size
     size_t bw = 32;
     size_t bh = 32;
     
-    size_t gw = (out_width + bw - 1) / bw;
-    size_t gh = (out_height + bh - 1) / bh;
+    size_t gw = (out_cols + bw - 1) / bw;
+    size_t gh = (out_rows + bh - 1) / bh;
     
     const dim3 block_sz(bw, bh, 1);
     const dim3 grid_sz(gw, gh, 1);
  	
     // Launch Kernel
     startCudaTimer(&timer);
- 	mux_multiview_kernel<<<grid_sz, block_sz>>>(d_views, d_out_data, angle, num_views, in_height, in_width, out_height, out_width, elem_sz);
+ 	mux_multiview_kernel<<<grid_sz, block_sz>>>(d_views, d_out_data, angle, num_views, in_rows, in_cols, out_rows, out_cols, elem_sz);
     cudaDeviceSynchronize();
     stopCudaTimer(&timer, "Multiview Interlace Kernel");
 
 	// Copy Memory back to Host
-	checkCudaError(cudaMemcpy(out_data, d_out_data, sizeof(unsigned char) * out_width * out_height * elem_sz,cudaMemcpyDeviceToHost));
+	checkCudaError(cudaMemcpy(out_data, d_out_data, sizeof(unsigned char) * out_cols * out_rows * elem_sz,cudaMemcpyDeviceToHost));
 
 	// De-allocation of Host & Device Memory
 	for (int v = 0; v < num_views; ++v)

@@ -187,7 +187,7 @@ int multiview_routine( int argc, char **argv)
     Mat output = Mat::zeros(out_height, out_width, CV_8UC(3));
     unsigned char* out_data = output.data;
     
-    d_mux_multiview( views_data, out_data, num_views, angle, in_width, in_height, out_width, out_height, elem_size);
+    d_mux_multiview( views_data, out_data, num_views, angle, in_height, in_width, out_height, out_width, elem_size);
     
     // Display Images
 
