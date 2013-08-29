@@ -6,6 +6,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv/cvaux.h>
+#include "d_ca_cross.h"
 #include "d_ci_adcensus.h"
 #include "d_ci_census.h"
 #include "d_ci_ad.h"
@@ -41,7 +42,7 @@ int main( int argc, char **argv)
     {
         printf("Place images in img subdir: \n");
         printf("then input file names directly w/o dir extension \n");
-        printf("Usage: ./program [left file] [right file] [ad coeff] [census coeff] [ndisp] [zerodisp]\n");
+        printf("Usage: ./program [left file] [right file] [ad coeff] [census coeff] [ndisp] [zerodisp] [upper color limit] [lower color limit] [upper spatial limit] [lower spatial limit]\n");
         return -1;
     } 
     
@@ -80,34 +81,62 @@ int main( int argc, char **argv)
     int num_rows = img_l.rows;
     int num_cols = img_l.cols;
     int elem_sz  = img_l.elemSize();
-    printf("rows: %d cols: %d\n", num_rows, num_cols);
-    printf("adcoeff: %f censuscoeff: %f\n", ad_coeff, census_coeff);
     
-    // Cost storage intialization
+    // Cost Initialization Memory Allocation
     std::vector<Mat> mat_cost_l;
-    for (int d = 0; d < num_disp; ++d)
-        mat_cost_l.push_back(Mat::zeros(num_rows, num_cols, CV_32F));
     float ** data_cost_l = (float**) malloc(sizeof(float*) * num_disp);
+    
+	for (int d = 0; d < num_disp; ++d)
+        mat_cost_l.push_back(Mat::zeros(num_rows, num_cols, CV_32F));
     for (int d = 0; d < num_disp; ++d)
         data_cost_l[d] = (float*) mat_cost_l[d].data;
 
     std::vector<Mat> mat_cost_r;
-    for (int d = 0; d < num_disp; ++d)
-    {
-        mat_cost_r.push_back(Mat::ones(num_rows, num_cols, CV_32F));
-    }
     float** data_cost_r = (float**) malloc(sizeof(float*) * num_disp);
+    
+	for (int d = 0; d < num_disp; ++d)
+        mat_cost_r.push_back(Mat::ones(num_rows, num_cols, CV_32F));
     for (int d = 0; d < num_disp; ++d)
         data_cost_r[d] = (float*) mat_cost_r[d].data;
     
-    // Cost Initiation
+    // Cost Initiation Kernel Call
     printDeviceInfo();
     ci_adcensus(data_img_l, data_img_r, data_cost_l, data_cost_r, ad_coeff, census_coeff, num_disp, zero_disp, num_rows, num_cols, elem_sz);
 
+    // Cost Aggragation Memory Allocation
+    std::vector<Mat> mat_acost_l;
+    float ** data_acost_l = (float**) malloc(sizeof(float*) * num_disp);
+    
+	for (int d = 0; d < num_disp; ++d)
+        mat_acost_l.push_back(Mat::zeros(num_rows, num_cols, CV_32F));
+    for (int d = 0; d < num_disp; ++d)
+        data_acost_l[d] = (float*) mat_acost_l[d].data;
+
+    std::vector<Mat> mat_acost_r;
+    float** data_acost_r = (float**) malloc(sizeof(float*) * num_disp);
+    
+	for (int d = 0; d < num_disp; ++d)
+    {
+        mat_acost_r.push_back(Mat::ones(num_rows, num_cols, CV_32F));
+    }
+    for (int d = 0; d < num_disp; ++d)
+        data_acost_r[d] = (float*) mat_acost_r[d].data;
+	
+	// Cost Aggragation Kernel Call
+	float ucd = atof(argv[7]);
+	float lcd = atof(argv[8]);
+	int usd = atoi(argv[9]);
+	int lsd = atoi(argv[10]);
+	
+	ca_cross(data_img_l, data_img_r, data_cost_l, data_cost_r, data_acost_l, data_acost_r, ucd, lcd, usd, lsd, num_rows, num_cols, elem_sz);
+
+	// Equalize Images for Display
     for (int d = 0; d < num_disp; ++d)
     {
         normalize(mat_cost_l[d], mat_cost_l[d], 0, 1, CV_MINMAX);
         normalize(mat_cost_r[d], mat_cost_r[d], 0, 1, CV_MINMAX);
+        normalize(mat_acost_l[d], mat_acost_l[d], 0, 1, CV_MINMAX);
+        normalize(mat_acost_r[d], mat_acost_r[d], 0, 1, CV_MINMAX);
     }
 
     // Display Images
@@ -142,8 +171,12 @@ int main( int argc, char **argv)
 
     free(data_cost_l); 
     free(data_cost_r); 
+    free(data_acost_l); 
+    free(data_acost_r); 
     mat_cost_l.clear();
     mat_cost_r.clear();
+    mat_acost_l.clear();
+    mat_acost_r.clear();
     return 0;
 }
 

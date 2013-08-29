@@ -18,7 +18,7 @@ NVCC=nvcc
 GCC=g++
 
 HOST_OBJECTS = host.o 
-DEVICE_OBJECTS = d_alu.o d_ci_census.o d_ci_ad.o d_mux_multiview.o d_tx_scale.o d_ci_adcensus.o
+DEVICE_OBJECTS = d_alu.o d_ci_census.o d_ci_ad.o d_mux_multiview.o d_tx_scale.o d_ci_adcensus.o d_ca_cross.o
 DEVICE_LINK = device.o
 
 # Link Host to Device Objects
