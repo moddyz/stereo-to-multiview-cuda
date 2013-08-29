@@ -73,6 +73,9 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
     unsigned char a_color_r = img[(tx + ty * num_cols) * elem_sz + 2];
     
     cross[CROSS_ARM_UP][tx + ty * num_cols] = 0;
+    cross[CROSS_ARM_DOWN][tx + ty * num_cols] = 0;
+    cross[CROSS_ARM_LEFT][tx + ty * num_cols] = 0;
+    cross[CROSS_ARM_RIGHT][tx + ty * num_cols] = 0;
     
     // Upper arm
     for (int y = 1; y <= usd; ++y)
@@ -108,7 +111,7 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
     // Down arm
     for (int y = 1; y <= usd; ++y)
     {
-        if (ty + y < 0)
+        if ((ty + y) > (num_rows - 1))
             break;
         
         cross[CROSS_ARM_DOWN][tx + ty * num_cols] = (unsigned char) y;
@@ -170,7 +173,7 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
     // Right arm
     for (int x = 1; x <= usd; ++x)
     {
-        if (tx + x < 0)
+        if ((tx + x) > (num_cols - 1))
             break;
         
         cross[CROSS_ARM_RIGHT][tx + ty * num_cols] = (unsigned char) x;
@@ -305,6 +308,8 @@ void ca_cross(unsigned char* img, float** cost, float** acost,
     {
         cudaFree(h_cross[i]);
     }
+    free(h_cost);
+    free(h_acost);
     free(h_cross);
 }
 

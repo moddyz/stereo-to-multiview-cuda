@@ -6,6 +6,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv/cvaux.h>
+#include "d_dc_wta.h"
 #include "d_ca_cross.h"
 #include "d_ci_adcensus.h"
 #include "d_ci_census.h"
@@ -123,7 +124,7 @@ int main( int argc, char **argv)
     
 	for (int d = 0; d < num_disp; ++d)
     {
-        mat_acost_r.push_back(Mat::ones(num_rows, num_cols, CV_32F));
+        mat_acost_r.push_back(Mat::zeros(num_rows, num_cols, CV_32F));
     }
     for (int d = 0; d < num_disp; ++d)
         data_acost_r[d] = (float*) mat_acost_r[d].data;
@@ -133,10 +134,24 @@ int main( int argc, char **argv)
 	float lcd = atof(argv[8]);
 	int usd = atoi(argv[9]);
 	int lsd = atoi(argv[10]);
+	printf("%f, %f, %d, %d\n", ucd, lcd, usd, lsd);
 	
 	ca_cross(data_img_l, data_cost_l, data_acost_l, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
 
 	ca_cross(data_img_r, data_cost_r, data_acost_r, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
+	
+
+	// Disparity Computation Memory Allocation
+	Mat mat_disp_l = Mat::zeros(num_rows, num_cols, CV_32F);
+	Mat mat_disp_r = Mat::zeros(num_rows, num_cols, CV_32F);
+
+	float* data_disp_l = (float*) mat_disp_l.data;
+	float* data_disp_r = (float*) mat_disp_r.data;
+
+	// Disparity Computation
+
+	dc_wta(data_acost_l, data_disp_l, num_disp, zero_disp, num_rows, num_cols);
+	dc_wta(data_acost_r, data_disp_r, num_disp, zero_disp, num_rows, num_cols);
 	
 	// Equalize Images for Display
     for (int d = 0; d < num_disp; ++d)
@@ -146,6 +161,8 @@ int main( int argc, char **argv)
         normalize(mat_acost_l[d], mat_acost_l[d], 0, 1, CV_MINMAX);
         normalize(mat_acost_r[d], mat_acost_r[d], 0, 1, CV_MINMAX);
     }
+	normalize(mat_disp_l, mat_disp_l, 0, 1, CV_MINMAX);
+	normalize(mat_disp_l, mat_disp_r, 0, 1, CV_MINMAX);
 
     // Display Images
     int display_mode = DISPLAY_MODE_COST;
@@ -175,6 +192,9 @@ int main( int argc, char **argv)
 			case '3':
             	display_mode = DISPLAY_MODE_ACOST;
 				break;
+			case '4':
+            	display_mode = DISPLAY_MODE_DISPARITY;
+				break;
 			case '=':
 				disp_level = min(disp_level + 1, num_disp - 1);
 				break;
@@ -192,12 +212,12 @@ int main( int argc, char **argv)
 				if (display_persp == DISPLAY_PERSP_LEFT)
 				{
 					imshow("Display", img_l);
-					printf("Displaying Left Source");
+					printf("Displaying Left Source\n");
 				}
 				else if (display_persp == DISPLAY_PERSP_RIGHT)
 				{
 					imshow("Display", img_r);
-					printf("Displaying Rgith Source");
+					printf("Displaying Right Source\n");
 				}
 				break;
 			case DISPLAY_MODE_COST:
@@ -222,6 +242,18 @@ int main( int argc, char **argv)
 				{
 					imshow("Display", mat_acost_r[disp_level]);
 					printf("Showing Right Aggragated Cost Disparity Level: %d\n", disp_level - zero_disp + 1);
+				}
+				break;
+			case DISPLAY_MODE_DISPARITY:
+				if (display_persp == DISPLAY_PERSP_LEFT)
+				{
+					imshow("Display", mat_disp_l);
+					printf("Showing Left Disparity\n");
+				}
+				else if (display_persp == DISPLAY_PERSP_RIGHT)
+				{
+					imshow("Display", mat_disp_r);
+					printf("Showing Right Disparity\n");
 				}
 				break;
 			default:
