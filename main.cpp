@@ -16,15 +16,21 @@
 
 using namespace cv;
 
+typedef enum
+{
+	DISPLAY_PERSP_LEFT,
+	DISPLAY_PERSP_RIGHT,
+} display_persp_e;
+
 typedef enum 
 {
-    DISPLAY_SOURCE,
-    DISPLAY_COST,
-    DISPLAY_ACOST,
-    DISPLAY_DISPARITY,
-    DISPLAY_MULTIVIEW,
-    DISPLAY_INTERLACED,
-} display_type_e;
+    DISPLAY_MODE_SOURCE,
+    DISPLAY_MODE_COST,
+    DISPLAY_MODE_ACOST,
+    DISPLAY_MODE_DISPARITY,
+    DISPLAY_MODE_MULTIVIEW,
+    DISPLAY_MODE_INTERLACED,
+} display_mode_e;
 
 void printMatInfo(Mat mat, char *mat_name)
 {
@@ -128,7 +134,7 @@ int main( int argc, char **argv)
 	int usd = atoi(argv[9]);
 	int lsd = atoi(argv[10]);
 	
-	ca_cross(data_img_l, data_img_r, data_cost_l, data_cost_r, data_acost_l, data_acost_r, ucd, lcd, usd, lsd, num_rows, num_cols, elem_sz);
+	ca_cross(data_img_l, data_img_r, data_cost_l, data_cost_r, data_acost_l, data_acost_r, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
 
 	// Equalize Images for Display
     for (int d = 0; d < num_disp; ++d)
@@ -140,7 +146,7 @@ int main( int argc, char **argv)
     }
 
     // Display Images
-    //int display_mode = DISPLAY_SOURCE;
+    int display_mode = DISPLAY_MODE_COST;
     int disp_level = zero_disp - 1;
     int display_persp = 0;
     namedWindow("Display");
@@ -148,25 +154,77 @@ int main( int argc, char **argv)
 	while( 1 )
     {
         char key = waitKey(0);
-        if (key == '1')
-            display_persp = 0;
-        else if (key == '2')
-            display_persp = 1;
-        else if (key == '=')
-            disp_level = min(disp_level + 1, num_disp - 1);
-        else if (key == '-')
-            disp_level = max(disp_level - 1, 0);
-        if (display_persp == 0)
-        {
-            imshow("Display", mat_cost_l[disp_level]);
-            printf("Showing Left Cost Disparity Level: %d\n", disp_level - zero_disp + 1);
-        }
-        else if (display_persp == 1)
-        {
-            imshow("Display", mat_cost_r[disp_level]);
-            printf("Showing Right Cost Disparity Level: %d\n", disp_level - zero_disp + 1);
-        }
 
+		// Handle Keys
+		switch (key)
+		{
+			case 'q':
+            	display_persp = DISPLAY_PERSP_LEFT;
+				break;
+			case 'w':
+            	display_persp = DISPLAY_PERSP_RIGHT;
+				break;
+			case '1':
+            	display_mode = DISPLAY_MODE_SOURCE;
+				break;
+			case '2':
+            	display_mode = DISPLAY_MODE_COST;
+				break;
+			case '3':
+            	display_mode = DISPLAY_MODE_ACOST;
+				break;
+			case '=':
+				disp_level = min(disp_level + 1, num_disp - 1);
+				break;
+			case '-':
+				disp_level = max(disp_level - 1, 0);
+				break;
+			default:
+				break;
+		}
+		
+		// Handle Display
+		switch (display_mode)
+		{
+			case DISPLAY_MODE_SOURCE:
+				if (display_persp == DISPLAY_PERSP_LEFT)
+				{
+					imshow("Display", img_l);
+					printf("Displaying Left Source");
+				}
+				else if (display_persp == DISPLAY_PERSP_RIGHT)
+				{
+					imshow("Display", img_r);
+					printf("Displaying Rgith Source");
+				}
+				break;
+			case DISPLAY_MODE_COST:
+				if (display_persp == DISPLAY_PERSP_LEFT)
+				{
+					imshow("Display", mat_cost_l[disp_level]);
+					printf("Showing Left Cost Disparity Level: %d\n", disp_level - zero_disp + 1);
+				}
+				else if (display_persp == DISPLAY_PERSP_RIGHT)
+				{
+					imshow("Display", mat_cost_r[disp_level]);
+					printf("Showing Right Cost Disparity Level: %d\n", disp_level - zero_disp + 1);
+				}
+				break;
+			case DISPLAY_MODE_COST:
+				if (display_persp == DISPLAY_PERSP_LEFT)
+				{
+					imshow("Display", mat_acost_l[disp_level]);
+					printf("Showing Left Aggragated Cost Disparity Level: %d\n", disp_level - zero_disp + 1);
+				}
+				else if (display_persp == DISPLAY_PERSP_RIGHT)
+				{
+					imshow("Display", mat_acost_r[disp_level]);
+					printf("Showing Right Aggragated Cost Disparity Level: %d\n", disp_level - zero_disp + 1);
+				}
+				break;
+			default:
+				break;
+		}
     }
 
     free(data_cost_l); 
