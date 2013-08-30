@@ -2,6 +2,7 @@
 #define D_MUX_MULTIVIEW_KERNEL
 #include "d_mux_multiview.h"
 #include "cuda_utils.h"
+#include "d_alu.h"
 #include <math.h>
 
 __global__ void mux_multiview_kernel(unsigned char** views, unsigned char* output, 
@@ -36,7 +37,7 @@ __global__ void mux_multiview_kernel(unsigned char** views, unsigned char* outpu
         g_view = g_view - num_views;
     if (b_view >= num_views)
         b_view =  b_view - num_views;
-
+    
     // Write to Output
     int b_out = (tx + ty * out_cols) * elem_sz;
     int g_out = b_out + 1;
@@ -56,7 +57,7 @@ void d_mux_multiview( unsigned char **views, unsigned char* out_data,
 	unsigned char** d_views;
 	checkCudaError(cudaMalloc(&d_views, sizeof(unsigned char *) * num_views));
 	
-	unsigned char** h_views = (unsigned char**) malloc(sizeof(unsigned char**) * num_views);
+	unsigned char** h_views = (unsigned char**) malloc(sizeof(unsigned char*) * num_views);
 	for (int v = 0; v < num_views; ++v)
 	{
 		checkCudaError(cudaMalloc(&h_views[v], sizeof(unsigned char) * in_cols * in_rows * elem_sz));
@@ -80,8 +81,7 @@ void d_mux_multiview( unsigned char **views, unsigned char* out_data,
  	
     // Launch Kernel
     startCudaTimer(&timer);
- 	mux_multiview_kernel<<<grid_sz, block_sz>>>(d_views, d_out_data, angle, num_views, in_rows, in_cols, out_rows, out_cols, elem_sz);
-    cudaDeviceSynchronize();
+ 	mux_multiview_kernel<<<grid_sz, block_sz>>>(d_views, d_out_data, num_views, angle, in_rows, in_cols, out_rows, out_cols, elem_sz);
     stopCudaTimer(&timer, "Multiview Interlace Kernel");
 
 	// Copy Memory back to Host

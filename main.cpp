@@ -47,7 +47,7 @@ void printMatInfo(Mat mat, char *mat_name)
 int main( int argc, char **argv)
 {
     printDeviceInfo();
-    if (argc != 13) 
+    if (argc != 15) 
     {
         printf("Place images in img subdir: \n");
         printf("then input file names directly w/o dir extension \n");
@@ -86,6 +86,8 @@ int main( int argc, char **argv)
 	float angle = atof(argv[12]);
 	int num_cols_out = atoi(argv[13]);
 	int num_rows_out = atoi(argv[14]);
+
+    printf("\n OUT ROWS: %d OUTCOLS: %d \n", num_rows_out, num_cols_out);
     
     ///////////////// 
     // READ IMAGES //
@@ -177,6 +179,40 @@ int main( int argc, char **argv)
 	dc_wta(data_acost_l, data_disp_l, num_disp, zero_disp, num_rows, num_cols);
 	dc_wta(data_acost_r, data_disp_r, num_disp, zero_disp, num_rows, num_cols);
 	
+    
+	//////////
+    // DIBR //
+    //////////
+	
+    std::vector<Mat> mat_views;
+	mat_views.push_back(mat_img_r);
+    for (int v = 1; v < num_views - 1; ++v)
+		mat_views.push_back(Mat::zeros(num_rows, num_cols, CV_8UC(3)));
+	mat_views.push_back(mat_img_l);
+    printf("%d \n", mat_views.size());
+
+    unsigned char **data_views = (unsigned char **) malloc(sizeof(unsigned char *) * num_views);
+    
+	for (int v = 0; v < num_views; ++v)
+        data_views[v] = mat_views[v].data;
+    
+    for (int v = 1; v < num_views - 1; ++v)
+    {
+        float shift = 1.0 - ((1.0 * (float) v) / ((float) num_views - 1.0));
+        dibr_dfm(data_views[v], data_img_l, data_img_r, data_disp_l, data_disp_r, shift, num_rows, num_cols, elem_sz);
+    }
+
+	/////////
+    // MUX //
+    /////////
+
+    Mat mat_mux = Mat::zeros(num_rows_out, num_cols_out, CV_8UC(3));
+    unsigned char* data_mux = mat_mux.data;
+    printf("%d %d %d %d \n", num_rows, num_cols, num_rows_out, num_cols_out);
+    printf("%d %f \n", num_views, angle);
+    
+    d_mux_multiview(data_views, data_mux, num_views, angle, num_rows, num_cols, num_rows_out, num_cols_out, elem_sz);
+
 	// Equalize Images for Display
     for (int d = 0; d < num_disp; ++d)
     {
@@ -187,33 +223,6 @@ int main( int argc, char **argv)
     }
 	normalize(mat_disp_l, mat_disp_l, 0, 1, CV_MINMAX);
 	normalize(mat_disp_r, mat_disp_r, 0, 1, CV_MINMAX);
-    
-	//////////
-    // DIBR //
-    //////////
-	
-    std::vector<Mat> mat_views;
-	mat_views.push_back(mat_img_r);
-    for (int v = 1; v < num_views - 1; ++v)
-		mat_views.push_back(Mat::zeros(num_rows_out, num_cols_out, CV_8UC(3)));
-
-    unsigned char **data_views = (unsigned char **) malloc(sizeof(unsigned char **) * num_views);
-    
-	for (int v = 0; v < num_views; ++v)
-        data_views[v] = mat_views[v].data;
-
-    
-	
-	/////////
-    // MUX //
-    /////////
-
-    Mat mat_mux = Mat::zeros(num_rows_out, num_cols_out, CV_8UC(3));
-    unsigned char* data_mux = mat_mux.data;
-    
-    d_mux_multiview(data_views, data_mux, num_views, angle, num_rows, num_cols, num_rows_out, num_cols_out, elem_sz);
-    
-
     /////////////
     // DISPLAY //
     /////////////
