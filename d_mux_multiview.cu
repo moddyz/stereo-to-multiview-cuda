@@ -4,8 +4,9 @@
 #include "cuda_utils.h"
 #include <math.h>
 
-__global__ void mux_multiview_kernel(unsigned char** views, unsigned char* output, float angle, int num_views,
-									int in_rows, int in_cols, int out_rows, int out_cols, int elem_sz)
+__global__ void mux_multiview_kernel(unsigned char** views, unsigned char* output, 
+                                     int num_views, float angle,
+									 int in_rows, int in_cols, int out_rows, int out_cols, int elem_sz)
 {
     // Thread Id's
     int tx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -35,8 +36,6 @@ __global__ void mux_multiview_kernel(unsigned char** views, unsigned char* outpu
         g_view = g_view - num_views;
     if (b_view >= num_views)
         b_view =  b_view - num_views;
-    if (r_view < 0 || g_view < 0 ||  b_view < 0)
-        printf("r:%d g:%d b:%d\n", r_view, g_view, b_view);
 
     // Write to Output
     int b_out = (tx + ty * out_cols) * elem_sz;
@@ -48,7 +47,8 @@ __global__ void mux_multiview_kernel(unsigned char** views, unsigned char* outpu
     output[r_out] = alu_bilinear_interp(views[r_view], elem_sz, 2, x_samp, y_samp, in_cols, in_rows);
 }
 
-void d_mux_multiview( unsigned char **views, unsigned char* out_data, int num_views, float angle, 
+void d_mux_multiview( unsigned char **views, unsigned char* out_data, 
+                      int num_views, float angle, 
 				      int in_rows, int in_cols, int out_rows, int out_cols, int elem_sz)
 {
     cudaEventPair_t timer;

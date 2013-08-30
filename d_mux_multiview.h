@@ -6,7 +6,12 @@
 #include <cuda_runtime_api.h>
 #include "d_alu.h"
 
-void d_mux_multiview( unsigned char **views, unsigned char* out_data, int num_views, float angle, 
-				      int in_width, int in_height, int out_width, int out_height, int elem_sz);
+__global__ void mux_multiview_kernel(unsigned char** views, unsigned char* output, 
+                                    int num_views, float angle, 
+									int in_rows, int in_cols, int out_rows, int out_cols, int elem_sz);
+
+void d_mux_multiview(unsigned char **views, unsigned char* out_data, 
+                     int num_views, float angle, 
+				     int in_width, int in_height, int out_width, int out_height, int elem_sz);
 
 #endif

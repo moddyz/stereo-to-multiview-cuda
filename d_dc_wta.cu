@@ -6,7 +6,9 @@
 #include <float.h>
 #include <limits.h>
 
-__global__ void dc_wta_kernel(float** cost, float* disp, int num_disp, int zero_disp, int num_rows, int num_cols)
+__global__ void dc_wta_kernel(float** cost, float* disp, 
+                              int num_disp, int zero_disp, 
+                              int num_rows, int num_cols)
 {
     int tx = threadIdx.x + blockIdx.x * blockDim.x;
     int ty = threadIdx.y + blockIdx.y * blockDim.y;
@@ -27,7 +29,9 @@ __global__ void dc_wta_kernel(float** cost, float* disp, int num_disp, int zero_
     }
 }
 
-void dc_wta(float** cost, float* disp, int num_disp, int zero_disp, int num_rows, int num_cols)
+void dc_wta(float** cost, float* disp, 
+            int num_disp, int zero_disp, 
+            int num_rows, int num_cols)
 {
     cudaEventPair_t timer;
     

@@ -18,7 +18,7 @@ NVCC=nvcc
 GCC=g++
 
 HOST_OBJECTS = host.o 
-DEVICE_OBJECTS = d_alu.o d_ci_census.o d_ci_ad.o d_mux_multiview.o d_tx_scale.o d_ci_adcensus.o d_ca_cross.o d_dc_wta.o
+DEVICE_OBJECTS = d_alu.o d_ci_census.o d_ci_ad.o d_mux_multiview.o d_tx_scale.o d_ci_adcensus.o d_ca_cross.o d_dc_wta.o d_dibr_warp.o
 DEVICE_LINK = device.o
 
 # Link Host to Device Objects
@@ -34,6 +34,9 @@ device.o: $(DEVICE_OBJECTS)
 	$(NVCC) $(NVCC_OPTS) -dlink $(DEVICE_OBJECTS) -o device.o
 
 # Device Objects
+d_dibr_warp.o: d_dibr_warp.cu d_dibr_warp.h cuda_utils.h
+	$(NVCC) -dc d_dibr_warp.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)
+
 d_dc_wta.o: d_dc_wta.cu d_dc_wta.h cuda_utils.h
 	$(NVCC) -dc d_dc_wta.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)
 

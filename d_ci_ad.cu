@@ -4,8 +4,9 @@
 #include "cuda_utils.h"
 #include <math.h>
 
-__global__ void ci_ad_kernel(unsigned char* img_l, unsigned char* img_r, float** cost_l, 
-                            float** cost_R, int num_disp, int zero_disp, int num_rows, int num_cols, int elem_sz)
+__global__ void ci_ad_kernel(unsigned char* img_l, unsigned char* img_r, 
+                             float** cost_l, float** cost_R, int num_disp, int zero_disp,
+                             int num_rows, int num_cols, int elem_sz)
 {
     int tx = threadIdx.x + blockIdx.x * blockDim.x;
     int ty = threadIdx.y + blockIdx.y * blockDim.y;

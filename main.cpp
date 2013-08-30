@@ -6,6 +6,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv/cvaux.h>
+#include "d_dibr_warp.h"
 #include "d_dc_wta.h"
 #include "d_ca_cross.h"
 #include "d_ci_adcensus.h"
@@ -46,16 +47,19 @@ void printMatInfo(Mat mat, char *mat_name)
 int main( int argc, char **argv)
 {
     printDeviceInfo();
-    if (argc != 11) 
+    if (argc != 13) 
     {
         printf("Place images in img subdir: \n");
         printf("then input file names directly w/o dir extension \n");
-        printf("Usage: ./program [left file] [right file] [ad coeff] [census coeff] [ndisp] [zerodisp] [upper color limit] [lower color limit] [upper spatial limit] [lower spatial limit]\n");
+        printf("Usage: ./program [left file] [right file] [ad coeff] [census coeff] [ndisp] [zerodisp] [upper color limit] [lower color limit] [upper spatial limit] [lower spatial limit] [num views] [angle] [out width] [out height]\n");
         return -1;
     } 
     
-    // File Path Parsing
-    const char* imgdir = "./img/";
+    ////////////////// 
+    // FILE PARSING //
+    //////////////////
+    
+	const char* imgdir = "./img/";
     char* file_l = argv[1];
     char *full_file_l = (char *) malloc(snprintf(NULL, 0, "%s%s.bmp", imgdir, file_l) + 1); 
     sprintf(full_file_l, "%s%s.bmp", imgdir, file_l);
@@ -66,32 +70,51 @@ int main( int argc, char **argv)
     sprintf(full_file_r, "%s%s.bmp", imgdir, file_r);
     printf("Reading %s...\n", full_file_r);
 
-    // Parameter Parsing
-    float ad_coeff = atof(argv[3]);
+    ///////////////////// 
+    // READ PARAMETERS //
+    /////////////////////
+    
+	float ad_coeff = atof(argv[3]);
     float census_coeff = atof(argv[4]);
     int num_disp = atoi(argv[5]);
     int zero_disp = atoi(argv[6]);
+	float ucd = atof(argv[7]);
+	float lcd = atof(argv[8]);
+	int usd = atoi(argv[9]);
+	int lsd = atoi(argv[10]);
+	int num_views = atoi(argv[11]);
+	float angle = atof(argv[12]);
+	int num_cols_out = atoi(argv[13]);
+	int num_rows_out = atoi(argv[14]);
     
-    // Read Images
-    Mat img_l = imread(full_file_l, CV_LOAD_IMAGE_COLOR);
-    Mat img_r = imread(full_file_r, CV_LOAD_IMAGE_COLOR);
+    ///////////////// 
+    // READ IMAGES //
+    /////////////////
+
+    Mat mat_img_l = imread(full_file_l, CV_LOAD_IMAGE_COLOR);
+    Mat mat_img_r = imread(full_file_r, CV_LOAD_IMAGE_COLOR);
+
     free(full_file_l);
     free(full_file_r);
-    if (img_l.empty() || img_r.empty())
+    
+	if (mat_img_l.empty() || mat_img_r.empty())
     {
         printf("Error! Could not read image files from disk! \n");
         return -1;
     }
 
-    unsigned char* data_img_l = img_l.data;
-    unsigned char* data_img_r = img_r.data;
+    unsigned char* data_img_l = mat_img_l.data;
+    unsigned char* data_img_r = mat_img_r.data;
     
-    int num_rows = img_l.rows;
-    int num_cols = img_l.cols;
-    int elem_sz  = img_l.elemSize();
+    int num_rows = mat_img_l.rows;
+    int num_cols = mat_img_l.cols;
+    int elem_sz  = mat_img_l.elemSize();
     
-    // Cost Initialization Memory Allocation
-    std::vector<Mat> mat_cost_l;
+    /////////////////////////
+    // COST INITIALIZATION //
+    /////////////////////////
+   
+	std::vector<Mat> mat_cost_l;
     float ** data_cost_l = (float**) malloc(sizeof(float*) * num_disp);
     
 	for (int d = 0; d < num_disp; ++d)
@@ -110,16 +133,11 @@ int main( int argc, char **argv)
     // Cost Initiation Kernel Call
     ci_adcensus(data_img_l, data_img_r, data_cost_l, data_cost_r, ad_coeff, census_coeff, num_disp, zero_disp, num_rows, num_cols, elem_sz);
 	
-	for (int r = 0; r < num_rows; ++r)
-	{
-		for (int c = 0; c < num_cols; ++c)
-		{
-			printf("%f ", data_cost_l[zero_disp][c + r * num_cols]);
-		}
-	}
-
-    // Cost Aggragation Memory Allocation
-    std::vector<Mat> mat_acost_l;
+    //////////////////////
+    // COST AGGRAGATION //
+    //////////////////////
+    
+	std::vector<Mat> mat_acost_l;
     float ** data_acost_l = (float**) malloc(sizeof(float*) * num_disp);
     
 	for (int d = 0; d < num_disp; ++d)
@@ -138,18 +156,16 @@ int main( int argc, char **argv)
         data_acost_r[d] = (float*) mat_acost_r[d].data;
 	
 	// Cost Aggragation Kernel Call
-	float ucd = atof(argv[7]);
-	float lcd = atof(argv[8]);
-	int usd = atoi(argv[9]);
-	int lsd = atoi(argv[10]);
-	printf("%f, %f, %d, %d\n", ucd, lcd, usd, lsd);
 	
 	ca_cross(data_img_l, data_cost_l, data_acost_l, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
 
 	ca_cross(data_img_r, data_cost_r, data_acost_r, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
 	
 
-	// Disparity Computation Memory Allocation
+    ///////////////////////////
+    // DISPARITY COMPUTATION //
+    ///////////////////////////
+	
 	Mat mat_disp_l = Mat::zeros(num_rows, num_cols, CV_32F);
 	Mat mat_disp_r = Mat::zeros(num_rows, num_cols, CV_32F);
 
@@ -171,13 +187,45 @@ int main( int argc, char **argv)
     }
 	normalize(mat_disp_l, mat_disp_l, 0, 1, CV_MINMAX);
 	normalize(mat_disp_r, mat_disp_r, 0, 1, CV_MINMAX);
+    
+	//////////
+    // DIBR //
+    //////////
+	
+    std::vector<Mat> mat_views;
+	mat_views.push_back(mat_img_r);
+    for (int v = 1; v < num_views - 1; ++v)
+		mat_views.push_back(Mat::zeros(num_rows_out, num_cols_out, CV_8UC(3)));
 
-    // Display Images
-    int display_mode = DISPLAY_MODE_COST;
-    int disp_level = zero_disp - 1;
+    unsigned char **data_views = (unsigned char **) malloc(sizeof(unsigned char **) * num_views);
+    
+	for (int v = 0; v < num_views; ++v)
+        data_views[v] = mat_views[v].data;
+
+    
+	
+	/////////
+    // MUX //
+    /////////
+
+    Mat mat_mux = Mat::zeros(num_rows_out, num_cols_out, CV_8UC(3));
+    unsigned char* data_mux = mat_mux.data;
+    
+    d_mux_multiview(data_views, data_mux, num_views, angle, num_rows, num_cols, num_rows_out, num_cols_out, elem_sz);
+    
+
+    /////////////
+    // DISPLAY //
+    /////////////
+    
+	int display_mode = DISPLAY_MODE_COST;
     int display_persp = 0;
-    namedWindow("Display");
+    int disp_level = zero_disp - 1;
+	int display_view = 0;
+    
+	namedWindow("Display");
     imshow("Display", mat_cost_l[disp_level]);
+	
 	while( 1 )
     {
         char key = waitKey(0);
@@ -203,11 +251,25 @@ int main( int argc, char **argv)
 			case '4':
             	display_mode = DISPLAY_MODE_DISPARITY;
 				break;
+			case '5':
+            	display_mode = DISPLAY_MODE_MULTIVIEW;
+				break;
+			case '6':
+            	display_mode = DISPLAY_MODE_INTERLACED;
+				break;
 			case '=':
-				disp_level = min(disp_level + 1, num_disp - 1);
+				if (display_mode == DISPLAY_MODE_COST ||
+					display_mode == DISPLAY_MODE_ACOST)
+					disp_level = min(disp_level + 1, num_disp - 1);
+				else if (display_mode == DISPLAY_MODE_MULTIVIEW)
+					display_view = min(display_view + 1, num_views - 1);
 				break;
 			case '-':
-				disp_level = max(disp_level - 1, 0);
+				if (display_mode == DISPLAY_MODE_COST ||
+					display_mode == DISPLAY_MODE_ACOST)
+					disp_level = max(disp_level - 1, 0);
+				else if (display_mode == DISPLAY_MODE_MULTIVIEW)
+					display_view = max(display_view - 1, 0);
 				break;
 			default:
 				break;
@@ -219,12 +281,12 @@ int main( int argc, char **argv)
 			case DISPLAY_MODE_SOURCE:
 				if (display_persp == DISPLAY_PERSP_LEFT)
 				{
-					imshow("Display", img_l);
+					imshow("Display", mat_img_l);
 					printf("Displaying Left Source\n");
 				}
 				else if (display_persp == DISPLAY_PERSP_RIGHT)
 				{
-					imshow("Display", img_r);
+					imshow("Display", mat_img_r);
 					printf("Displaying Right Source\n");
 				}
 				break;
@@ -264,6 +326,14 @@ int main( int argc, char **argv)
 					printf("Showing Right Disparity\n");
 				}
 				break;
+			case DISPLAY_MODE_MULTIVIEW:
+				imshow("Display", mat_views[display_view]);
+				printf("Showing View # %d\n", display_view + 1);
+				break;
+			case DISPLAY_MODE_INTERLACED:
+				imshow("Display", mat_mux);
+				printf("Showing Interlaced\n");
+				break;
 			default:
 				break;
 		}
@@ -277,69 +347,7 @@ int main( int argc, char **argv)
     mat_cost_r.clear();
     mat_acost_l.clear();
     mat_acost_r.clear();
+    mat_views.clear();
     return 0;
 }
 
-int multiview_routine( int argc, char **argv)
-{
-    // Parse Commands
-
-    if (argc != 6) 
-    {
-        printf("Usage: ./program [file prefix] [num views] [angle] [output x] [output y]\n");
-        return -1;
-    }
-    
-    char * c_file_prefix = argv[1];
-    float angle = atof(argv[3]);
-    int num_views = atoi(argv[2]);
-    int out_width = atoi(argv[4]);
-    int out_height = atoi(argv[5]);
-
-    std::vector<Mat> views;
-    for (int v = 0; v < num_views; ++v)
-    {
-        char *file = (char *) malloc(snprintf(NULL, 0, "%s%d.bmp", c_file_prefix, v + 1) + 1); 
-        sprintf(file, "%s%d.bmp", c_file_prefix, v + 1);
-        printf("Reading %s...\n", file);
-        views.push_back(imread(file, CV_LOAD_IMAGE_COLOR));
-        free(file);
-    }
-
-    // Process Images
-    unsigned char **views_data = (unsigned char **) malloc(sizeof(unsigned char **) * num_views);
-    for (int v = 0; v < num_views; ++v)
-    {
-        views_data[v] = views[v].data;
-    }
-    
-    int in_width = views[0].cols;
-    int in_height = views[0].rows;
-    int elem_size = views[0].elemSize();
-     
-    Mat output = Mat::zeros(out_height, out_width, CV_8UC(3));
-    unsigned char* out_data = output.data;
-    
-    d_mux_multiview( views_data, out_data, num_views, angle, in_height, in_width, out_height, out_width, elem_size);
-    
-    // Display Images
-
-    namedWindow("Display");
-    imshow("Display", views[0]);
-	while( 1 )
-    {
-        char key = waitKey(0);
-        int ikey = atoi(&key);
-        if (ikey != 0 && key != '0')
-        {
-            imshow("Display", views[ikey-1]);
-        }
-        if (key == 'o')
-            imshow("Display", output);
-    }
-
-    free(views_data);
-    
-	return 0;
-
-}
