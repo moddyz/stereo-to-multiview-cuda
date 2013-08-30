@@ -36,12 +36,11 @@ __global__ void tx_census_9x7_kernel(unsigned char* img, unsigned long long* cen
                 if (img[(cx + cy * num_cols) * elem_sz + 2] < img[(tx + ty * num_cols) * elem_sz + 2])
                     cr = cr + 1;
             }
-            census[(tx + ty * num_cols) * elem_sz] = cb;
-            census[(tx + ty * num_cols) * elem_sz + 1] = cg;
-            census[(tx + ty * num_cols) * elem_sz + 2] = cr;
         }
     }
-    
+    census[(tx + ty * num_cols) * elem_sz] = cb;
+    census[(tx + ty * num_cols) * elem_sz + 1] = cg;
+    census[(tx + ty * num_cols) * elem_sz + 2] = cr;
 }
 
 __global__ void ci_census_kernel(unsigned long long* census_l, unsigned long long* census_r, float** cost_l, 
@@ -127,7 +126,7 @@ void ci_census(unsigned char* img_l, unsigned char* img_r, float** cost_l, float
     
     // Launch Cost Kernel
     startCudaTimer(&timer);
-    ci_census_kernel<<<grid_sz, block_sz>>>(d_census_r, d_census_r, d_cost_l, d_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz);
+    ci_census_kernel<<<grid_sz, block_sz>>>(d_census_l, d_census_r, d_cost_l, d_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz);
     stopCudaTimer(&timer, "Census Cost Kernel");
 
     // Copy Device Data to Host

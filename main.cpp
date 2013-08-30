@@ -45,6 +45,7 @@ void printMatInfo(Mat mat, char *mat_name)
 
 int main( int argc, char **argv)
 {
+    printDeviceInfo();
     if (argc != 11) 
     {
         printf("Place images in img subdir: \n");
@@ -107,8 +108,15 @@ int main( int argc, char **argv)
         data_cost_r[d] = (float*) mat_cost_r[d].data;
     
     // Cost Initiation Kernel Call
-    printDeviceInfo();
     ci_adcensus(data_img_l, data_img_r, data_cost_l, data_cost_r, ad_coeff, census_coeff, num_disp, zero_disp, num_rows, num_cols, elem_sz);
+	
+	for (int r = 0; r < num_rows; ++r)
+	{
+		for (int c = 0; c < num_cols; ++c)
+		{
+			printf("%f ", data_cost_l[zero_disp][c + r * num_cols]);
+		}
+	}
 
     // Cost Aggragation Memory Allocation
     std::vector<Mat> mat_acost_l;
@@ -162,7 +170,7 @@ int main( int argc, char **argv)
         normalize(mat_acost_r[d], mat_acost_r[d], 0, 1, CV_MINMAX);
     }
 	normalize(mat_disp_l, mat_disp_l, 0, 1, CV_MINMAX);
-	normalize(mat_disp_l, mat_disp_r, 0, 1, CV_MINMAX);
+	normalize(mat_disp_r, mat_disp_r, 0, 1, CV_MINMAX);
 
     // Display Images
     int display_mode = DISPLAY_MODE_COST;

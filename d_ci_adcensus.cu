@@ -128,7 +128,7 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
     
     // Launch Kernel
     startCudaTimer(&timer);
-    ci_census_kernel<<<grid_sz, block_sz>>>(d_census_r, d_census_r, d_census_cost_l, d_census_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz);
+    ci_census_kernel<<<grid_sz, block_sz>>>(d_census_l, d_census_r, d_census_cost_l, d_census_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz);
     stopCudaTimer(&timer, "Census Cost Kernel");
     
     /////////////////
