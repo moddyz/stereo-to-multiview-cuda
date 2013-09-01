@@ -8,6 +8,7 @@
 #include <opencv/cvaux.h>
 #include "d_dibr_warp.h"
 #include "d_dc_wta.h"
+#include "d_dc_hslo.h"
 #include "d_ca_cross.h"
 #include "d_ci_adcensus.h"
 #include "d_ci_census.h"
@@ -178,7 +179,7 @@ int main( int argc, char **argv)
 
 	dc_wta(data_acost_l, data_disp_l, num_disp, zero_disp, num_rows, num_cols);
 	dc_wta(data_acost_r, data_disp_r, num_disp, zero_disp, num_rows, num_cols);
-	
+
     
 	//////////
     // DIBR //
@@ -223,6 +224,19 @@ int main( int argc, char **argv)
     }
 	normalize(mat_disp_l, mat_disp_l, 0, 1, CV_MINMAX);
 	normalize(mat_disp_r, mat_disp_r, 0, 1, CV_MINMAX);
+   
+    
+    
+    //////////////////
+    // TESTING HSLO //
+    //////////////////
+
+    float T = 15.0;
+    float H1 = 1.0;
+    float H2 = 3.0;
+
+    dc_hslo(data_cost_l, data_disp_l, data_img_l, data_img_r, T, H1, H2, num_disp, zero_disp, num_rows, num_cols, elem_sz); 
+    
     /////////////
     // DISPLAY //
     /////////////
