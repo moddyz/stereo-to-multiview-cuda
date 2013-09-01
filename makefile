@@ -18,7 +18,7 @@ NVCC=nvcc
 GCC=g++
 
 HOST_OBJECTS = host.o 
-DEVICE_OBJECTS = d_alu.o d_ci_census.o d_ci_ad.o d_mux_multiview.o d_tx_scale.o d_ci_adcensus.o d_ca_cross.o d_dc_wta.o d_dibr_warp.o d_mux_common.o d_dc_hslo.o
+DEVICE_OBJECTS = d_alu.o d_ci_census.o d_ci_ad.o d_mux_multiview.o d_tx_scale.o d_ci_adcensus.o d_ca_cross.o d_dc_wta.o d_dibr_warp.o d_mux_common.o d_dc_hslo.o d_demux_common.o
 DEVICE_LINK = device.o
 
 # Link Host to Device Objects
@@ -60,6 +60,9 @@ d_mux_multiview.o: d_mux_multiview.cu d_mux_multiview.h cuda_utils.h d_alu.o
 
 d_mux_common.o: d_mux_common.cu d_mux_common.h cuda_utils.h
 	$(NVCC) -dc d_mux_common.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)
+
+d_demux_common.o: d_demux_common.cu d_demux_common.h cuda_utils.h
+	$(NVCC) -dc d_demux_common.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)
 
 d_tx_scale.o: d_tx_scale.cu d_tx_scale.h cuda_utils.h d_alu.o
 	$(NVCC) -dc d_tx_scale.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)

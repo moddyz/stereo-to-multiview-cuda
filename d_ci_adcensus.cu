@@ -58,6 +58,9 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
     size_t gh = (num_rows + bh - 1) / bh;
     const dim3 block_sz(bw, bh, 1);
     const dim3 grid_sz(gw, gh, 1);
+    
+    int sm_w = bw + num_disp;
+    int sm_sz = sm_w * bh * elem_sz; 
 
     ////////
     // AD //
@@ -84,7 +87,7 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
     
     // Launch Kernel
     startCudaTimer(&timer);
-    ci_ad_kernel<<<grid_sz, block_sz>>>(d_img_l, d_img_r, d_ad_cost_l, d_ad_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz);
+    ci_ad_kernel<<<grid_sz, block_sz, sm_sz * 2 * sizeof(unsigned char)>>>(d_img_l, d_img_r, d_ad_cost_l, d_ad_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_w, sm_sz);
     stopCudaTimer(&timer, "Absolute Difference Kernel");
 
     ////////////
@@ -128,7 +131,7 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
     
     // Launch Kernel
     startCudaTimer(&timer);
-    ci_census_kernel<<<grid_sz, block_sz>>>(d_census_l, d_census_r, d_census_cost_l, d_census_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz);
+    ci_census_kernel<<<grid_sz, block_sz, sm_sz * 2 * sizeof(unsigned char)>>>(d_census_l, d_census_r, d_census_cost_l, d_census_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_w, sm_sz);
     stopCudaTimer(&timer, "Census Cost Kernel");
     
     /////////////////
