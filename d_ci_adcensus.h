@@ -5,9 +5,11 @@
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 
-__global__ void ci_adcensus_kernel(float** ad_cost_l, float** ad_cost_r, float** census_cost_l, float** census_cost_r,
+__global__ void ci_adcensus_kernel(float** ad_cost_l, float** ad_cost_r, 
+                                   float** census_cost_l, float** census_cost_r,
                                    float** adcensus_cost_l, float** adcensus_cost_r,
-                                   float inv_ad_coeff, float inv_census_coeff, int num_disp, int zero_disp, 
+                                   float inv_ad_coeff, float inv_census_coeff, 
+                                   int num_disp, int zero_disp, 
                                    int num_rows, int num_cols, int elem_sz);
 
 void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, float** cost_r, 
