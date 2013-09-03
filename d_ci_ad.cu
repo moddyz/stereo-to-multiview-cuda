@@ -53,10 +53,9 @@ __global__ void ci_ad_kernel(unsigned char* img_l, unsigned char* img_r,
         float cost_g = abs(sm_img_l[ll + 1] - sm_img_r[lr + 1]);
         float cost_r = abs(sm_img_l[ll + 2] - sm_img_r[lr + 2]);
         float cost = (cost_b + cost_g + cost_r) * 0.33333333333333333;
-            cost_l[d][gx + gy_numcols] = cost;
-        
+        cost_l[d][gx + gy_numcols] = cost;
         int gr_coord = min(max(gx + (d - zero_disp), 0), num_cols - 1);
-            cost_R[d][gr_coord + gy_numcols] = cost;
+        cost_R[d][gr_coord + gy_numcols] = cost;
     }
 }
 

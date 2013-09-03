@@ -45,8 +45,7 @@ __global__ void tx_census_9x7_kernel(unsigned char* img, unsigned long long* cen
 
 __global__ void ci_census_kernel(unsigned long long* census_l, unsigned long long* census_r, float** cost_l, 
                                  float** cost_R, int num_disp, int zero_disp, int num_rows, 
-                                 int num_cols, int elem_sz,
-                                 int sm_w, int sm_sz)
+                                 int num_cols, int elem_sz)
 {
     int tx = threadIdx.x + blockIdx.x * blockDim.x;
     int ty = threadIdx.y + blockIdx.y * blockDim.y;
@@ -62,7 +61,7 @@ __global__ void ci_census_kernel(unsigned long long* census_l, unsigned long lon
         float cost_b = (float) alu_hamdist_64(census_l[ll], census_r[lr]);
         float cost_g = (float) alu_hamdist_64(census_l[ll + 1], census_r[lr + 1]);
         float cost_r = (float) alu_hamdist_64(census_l[ll + 2], census_r[lr + 2]);
-        float cost = (cost_b + cost_g + cost_r) / 3.0;
+        float cost = (cost_b + cost_g + cost_r) * 0.33333333333;
         cost_l[d][tx + ty * num_cols] = cost;
         cost_R[d][r_coord + ty * num_cols] = cost;
     }

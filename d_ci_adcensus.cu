@@ -17,16 +17,18 @@ __global__ void ci_adcensus_kernel(float** ad_cost_l, float** ad_cost_r, float**
     if ((tx > num_cols - 1) || (ty > num_rows - 1))
         return;
 
+    int pdx = tx + ty * num_cols;
+
     for (int d = 0; d < num_disp; ++d)
     {
-       float ad_comp_l = 1.0 - exp(-ad_cost_l[d][tx + ty * num_cols]*inv_ad_coeff);
-       float ad_comp_r = 1.0 - exp(-ad_cost_r[d][tx + ty * num_cols]*inv_ad_coeff);
+       float ad_comp_l = 1.0 - exp(-ad_cost_l[d][pdx]*inv_ad_coeff);
+       float ad_comp_r = 1.0 - exp(-ad_cost_r[d][pdx]*inv_ad_coeff);
 
-       float census_comp_l = 1.0 - exp(-census_cost_l[d][tx + ty * num_cols]*inv_census_coeff);
-       float census_comp_r = 1.0 - exp(-census_cost_r[d][tx + ty * num_cols]*inv_census_coeff);
+       float census_comp_l = 1.0 - exp(-census_cost_l[d][pdx]*inv_census_coeff);
+       float census_comp_r = 1.0 - exp(-census_cost_r[d][pdx]*inv_census_coeff);
 
-       adcensus_cost_l[d][tx + ty * num_cols] = ad_comp_l + census_comp_l;
-       adcensus_cost_r[d][tx + ty * num_cols] = ad_comp_r + census_comp_r;
+       adcensus_cost_l[d][pdx] = ad_comp_l + census_comp_l;
+       adcensus_cost_r[d][pdx] = ad_comp_r + census_comp_r;
     }
 }
 
@@ -131,7 +133,7 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
     
     // Launch Kernel
     startCudaTimer(&timer);
-    ci_census_kernel<<<grid_sz, block_sz, sm_sz * 2 * sizeof(unsigned char)>>>(d_census_l, d_census_r, d_census_cost_l, d_census_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_w, sm_sz);
+    ci_census_kernel<<<grid_sz, block_sz>>>(d_census_l, d_census_r, d_census_cost_l, d_census_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz);
     stopCudaTimer(&timer, "Census Cost Kernel");
     
     /////////////////
