@@ -59,6 +59,33 @@ __global__ void ci_ad_kernel(unsigned char* img_l, unsigned char* img_r,
     }
 }
 
+void d_ci_ad(unsigned char* d_img_l, unsigned char* d_img_r, 
+             float** d_cost_l, float** d_cost_r,
+             int num_disp, int zero_disp,
+             int num_rows, int num_cols, int elem_sz)
+{
+    cudaEventPair_t timer;
+	
+    // Setup Block & Grid Size
+    size_t bw = 32;
+    size_t bh = 32;
+    
+    size_t gw = (num_cols + bw - 1) / bw;
+    size_t gh = (num_rows + bh - 1) / bh;
+    
+    const dim3 block_sz(bw, bh, 1);
+    const dim3 grid_sz(gw, gh, 1);
+
+    int sm_w = bw + num_disp - 1;
+    int sm_sz = sm_w * bh * elem_sz;
+    
+    // Launch Kernel
+    startCudaTimer(&timer);
+    ci_ad_kernel<<<grid_sz, block_sz, 2 * sm_sz * sizeof(unsigned char)>>>(d_img_l, d_img_r, d_cost_l, d_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_w, sm_sz);
+    stopCudaTimer(&timer, "Cost Initialization - Absolute Difference Kernel");
+
+}
+
 void ci_ad(unsigned char* img_l, unsigned char* img_r, float** cost_l, float** cost_r, int num_disp, int zero_disp, int num_rows, int num_cols, int elem_sz)
 {
     cudaEventPair_t timer;
