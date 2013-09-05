@@ -29,6 +29,31 @@ __global__ void dc_wta_kernel(float** cost, float* disp,
     }
 }
 
+void d_dc_wta(float** d_cost, float* d_disp, 
+              int num_disp, int zero_disp, 
+              int num_rows, int num_cols)
+{
+    /////////////////////// 
+    // DEVICE PARAMETERS //
+    ///////////////////////
+
+    size_t bw = 32;
+    size_t bh = 32;
+    size_t gw = (num_cols + bw - 1) / bw;
+    size_t gh = (num_rows + bh - 1) / bh;
+    const dim3 block_sz(bw, bh, 1);
+    const dim3 grid_sz(gw, gh, 1);
+    
+    //////////////////////
+    // WINNER TAKES ALL //
+    //////////////////////
+    
+    dc_wta_kernel<<<grid_sz, block_sz>>>(d_cost, d_disp, num_disp, zero_disp, num_rows, num_cols);
+    cudaDeviceSynchronize(); 
+
+}
+
+
 void dc_wta(float** cost, float* disp, 
             int num_disp, int zero_disp, 
             int num_rows, int num_cols)

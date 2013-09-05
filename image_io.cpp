@@ -35,6 +35,16 @@ typedef enum
     DISPLAY_MODE_INTERLACED,
 } display_mode_e;
 
+void printMatInfo(Mat mat, char *mat_name)
+{
+   int rows = mat.rows;
+   int cols = mat.cols;
+   int esz = mat.elemSize();
+
+   printf("%s info:\n", mat_name);
+   printf("Rows: %d, Cols: %d, Element Size: %d\n\n", rows, cols, esz);
+}
+
 int main(int argc, char** argv)
 {
     printDeviceInfo();
@@ -180,7 +190,7 @@ int main(int argc, char** argv)
     for (int v = 1; v < num_views - 1; ++v)
 		mat_views.push_back(Mat::zeros(num_rows, num_cols, CV_8UC(3)));
 	mat_views.push_back(mat_img_l);
-    printf("%d \n", mat_views.size());
+    printf("%d \n", (int) mat_views.size());
 
     unsigned char **data_views = (unsigned char **) malloc(sizeof(unsigned char *) * num_views);
     
@@ -202,7 +212,7 @@ int main(int argc, char** argv)
     printf("%d %d %d %d \n", num_rows, num_cols, num_rows_out, num_cols_out);
     printf("%d %f \n", num_views, angle);
     
-    d_mux_multiview(data_views, data_mux, num_views, angle, num_rows, num_cols, num_rows_out, num_cols_out, elem_sz);
+    mux_multiview(data_views, data_mux, num_views, angle, num_rows, num_cols, num_rows_out, num_cols_out, elem_sz);
 
 	// Equalize Images for Display
     for (int d = 0; d < num_disp; ++d)

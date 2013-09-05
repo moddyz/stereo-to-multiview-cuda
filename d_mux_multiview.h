@@ -10,8 +10,12 @@ __global__ void mux_multiview_kernel(unsigned char** views, unsigned char* outpu
                                     int num_views, float angle, 
 									int in_rows, int in_cols, int out_rows, int out_cols, int elem_sz);
 
-void d_mux_multiview( unsigned char **views, unsigned char* out_data, 
+void d_mux_multiview( unsigned char **d_views, unsigned char* d_out_data, 
                       int num_views, float angle, 
 				      int in_rows, int in_cols, int out_rows, int out_cols, int elem_sz);
+
+void mux_multiview(unsigned char **views, unsigned char* out_data, 
+                   int num_views, float angle, 
+	        	   int in_rows, int in_cols, int out_rows, int out_cols, int elem_sz);
 
 #endif

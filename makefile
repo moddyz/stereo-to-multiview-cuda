@@ -17,7 +17,7 @@ GCC_OPTS =  -O3 -Wall -Wextra -m64
 NVCC=nvcc
 GCC=g++
 
-DEVICE_OBJECTS = d_alu.o d_ci_census.o d_ci_ad.o d_mux_multiview.o d_tx_scale.o d_ci_adcensus.o d_ca_cross.o d_dc_wta.o d_dibr_warp.o d_mux_common.o d_dc_hslo.o d_demux_common.o
+DEVICE_OBJECTS = d_io.o d_alu.o d_ci_census.o d_ci_ad.o d_mux_multiview.o d_tx_scale.o d_ci_adcensus.o d_ca_cross.o d_dc_wta.o d_dibr_warp.o d_mux_common.o d_dc_hslo.o d_demux_common.o
 DEVICE_LINK = device.o
 
 all: video_io image_io
@@ -27,7 +27,7 @@ video_io: host_video_io.o $(DEVICE_LINK)
 	$(GCC) $(GCC_OPTS) -o video_io host_video_io.o $(DEVICE_OBJECTS) $(DEVICE_LINK) -L$(OPENCV_LIB_PATH) -L$(CUDA_LIB_PATH) $(OPENCV_LIBS) $(USER_LIBS) -lcudart
 
 image_io: host_image_io.o $(DEVICE_LINK)
-	$(GCC) $(GCC_OPTS) -o image_io host_video_io.o $(DEVICE_OBJECTS) $(DEVICE_LINK) -L$(OPENCV_LIB_PATH) -L$(CUDA_LIB_PATH) $(OPENCV_LIBS) $(USER_LIBS) -lcudart
+	$(GCC) $(GCC_OPTS) -o image_io host_image_io.o $(DEVICE_OBJECTS) $(DEVICE_LINK) -L$(OPENCV_LIB_PATH) -L$(CUDA_LIB_PATH) $(OPENCV_LIBS) $(USER_LIBS) -lcudart
 
 # Host Objects
 host_video_io.o: video_io.cpp
@@ -41,6 +41,9 @@ device.o: $(DEVICE_OBJECTS)
 	$(NVCC) $(NVCC_OPTS) -dlink $(DEVICE_OBJECTS) -o device.o
 
 # Device Objects
+d_io.o: d_io.cu d_io.h cuda_utils.h
+	$(NVCC) -dc d_io.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)
+
 d_dibr_warp.o: d_dibr_warp.cu d_dibr_warp.h cuda_utils.h
 	$(NVCC) -dc d_dibr_warp.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)
 
