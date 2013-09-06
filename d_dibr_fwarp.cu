@@ -1,6 +1,6 @@
-#ifndef D_DIBR_WARP_KERNEL 
-#define D_DIBR_WARP_KERNEL
-#include "d_dibr_warp.h"
+#ifndef D_DIBR_FWARP_KERNEL 
+#define D_DIBR_FWARP_KERNEL
+#include "d_dibr_fwarp.h"
 #include "d_mux_common.h"
 #include "cuda_utils.h"
 #include <math.h>

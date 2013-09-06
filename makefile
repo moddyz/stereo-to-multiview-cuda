@@ -48,7 +48,7 @@ d_dibr_occl.o: d_dibr_occl.cu d_dibr_occl.h cuda_utils.h
 	$(NVCC) -dc d_dibr_occl.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)
 
 d_dibr_fwarp.o: d_dibr_fwarp.cu d_dibr_fwarp.h cuda_utils.h
-	$(NVCC) -dc d_dibr_warp.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)
+	$(NVCC) -dc d_dibr_fwarp.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)
 
 d_dc_hslo.o: d_dc_hslo.cu d_dc_hslo.h cuda_utils.h
 	$(NVCC) -dc d_dc_hslo.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)

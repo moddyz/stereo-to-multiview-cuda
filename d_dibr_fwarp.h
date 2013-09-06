@@ -1,5 +1,5 @@
-#ifndef D_DIBR_WARP_H
-#define D_DIBR_WARP_H
+#ifndef D_DIBR_FWARP_H
+#define D_DIBR_FWARP_H
 #include <stdio.h>
 #include <cuda.h>
 #include <cuda_runtime.h>
