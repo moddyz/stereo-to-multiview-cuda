@@ -49,6 +49,9 @@ inline void stopCudaTimer(cudaEventPair_t * p, char *message)
 
 inline void printDeviceInfo()
 {
+    printf("=======================\n");
+    printf("== CUDA DEVICE QUERY ==\n");
+    printf("=======================\n\n");
     int nDevices;
     cudaGetDeviceCount(&nDevices);
     for (int i = 0; i < nDevices; ++i)
@@ -75,6 +78,7 @@ inline void printDeviceInfo()
         printf("Concurrent copy and execution: %s\n",  (devProp.deviceOverlap ? "Yes" : "No"));
         printf("Number of multiprocessors:     %d\n",  devProp.multiProcessorCount);
         printf("Kernel execution timeout:      %s\n",  (devProp.kernelExecTimeoutEnabled ? "Yes" : "No"));
+		printf("\n");
     }
 }
 

@@ -6,6 +6,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv/cvaux.h>
+#include "d_dibr_occl.h"
 #include "d_dibr_warp.h"
 #include "d_dc_wta.h"
 #include "d_dc_hslo.h"
@@ -31,6 +32,7 @@ typedef enum
     DISPLAY_MODE_COST,
     DISPLAY_MODE_ACOST,
     DISPLAY_MODE_DISPARITY,
+    DISPLAY_MODE_OCCLUSION,
     DISPLAY_MODE_MULTIVIEW,
     DISPLAY_MODE_INTERLACED,
 } display_mode_e;
@@ -47,7 +49,6 @@ void printMatInfo(Mat mat, char *mat_name)
 
 int main(int argc, char** argv)
 {
-    printDeviceInfo();
     if (argc != 15) 
     {
         printf("Place images in img subdir: \n");
@@ -55,6 +56,12 @@ int main(int argc, char** argv)
         printf("Usage: ./program [left file] [right file] [ad coeff] [census coeff] [ndisp] [zerodisp] [upper color limit] [lower color limit] [upper spatial limit] [lower spatial limit] [num views] [angle] [out width] [out height]\n");
         return -1;
     } 
+    
+    printDeviceInfo();
+    
+    printf("=======================================\n");
+    printf("== STEREO TO MULTIVIEW IMAGE PROCESS ==\n");
+    printf("=======================================\n\n");
     
     ////////////////// 
     // FILE PARSING //
@@ -71,25 +78,6 @@ int main(int argc, char** argv)
     sprintf(full_file_r, "%s%s.bmp", imgdir, file_r);
     printf("Reading %s...\n", full_file_r);
 
-    ///////////////////// 
-    // READ PARAMETERS //
-    /////////////////////
-    
-	float ad_coeff = atof(argv[3]);
-    float census_coeff = atof(argv[4]);
-    int num_disp = atoi(argv[5]);
-    int zero_disp = atoi(argv[6]);
-	float ucd = atof(argv[7]);
-	float lcd = atof(argv[8]);
-	int usd = atoi(argv[9]);
-	int lsd = atoi(argv[10]);
-	int num_views = atoi(argv[11]);
-	float angle = atof(argv[12]);
-	int num_cols_out = atoi(argv[13]);
-	int num_rows_out = atoi(argv[14]);
-
-    printf("\n OUT ROWS: %d OUTCOLS: %d \n", num_rows_out, num_cols_out);
-    
     ///////////////// 
     // READ IMAGES //
     /////////////////
@@ -113,6 +101,39 @@ int main(int argc, char** argv)
     int num_cols = mat_img_l.cols;
     int elem_sz  = mat_img_l.elemSize();
     
+    ///////////////////// 
+    // READ PARAMETERS //
+    /////////////////////
+    
+	float ad_coeff = atof(argv[3]);
+    float census_coeff = atof(argv[4]);
+    int num_disp = atoi(argv[5]);
+    int zero_disp = atoi(argv[6]);
+	float ucd = atof(argv[7]);
+	float lcd = atof(argv[8]);
+	int usd = atoi(argv[9]);
+	int lsd = atoi(argv[10]);
+	int num_views = atoi(argv[11]);
+	float angle = atof(argv[12]);
+	int num_cols_out = atoi(argv[13]);
+	int num_rows_out = atoi(argv[14]);
+
+    printf("Input Width:             %d\n", num_cols); 
+    printf("Input Height:            %d\n", num_rows); 
+    printf("Number of Views:         %d\n", num_views);
+    printf("Angle of Attenuator:     %f\n", angle);
+    printf("Output Width:            %d\n", num_cols_out); 
+    printf("Output Height:           %d\n", num_rows_out); 
+    printf("Number of Disparities:   %d\n", num_disp);
+    printf("Zero Disparity Index:    %d\n", zero_disp);
+    printf("AD Coefficient:          %f\n", ad_coeff);
+    printf("Census Coefficient:      %f\n", census_coeff);
+    printf("Upper Color Delta:       %f\n", ucd);
+    printf("Lower Color Delta:       %f\n", lcd);
+    printf("Upper Spatial Delta:     %d\n", usd);
+    printf("Lower Spatial Delta:     %d\n", lsd);
+    printf("\n");
+    
     /////////////////////////
     // COST INITIALIZATION //
     /////////////////////////
@@ -133,7 +154,6 @@ int main(int argc, char** argv)
     for (int d = 0; d < num_disp; ++d)
         data_cost_r[d] = (float*) mat_cost_r[d].data;
     
-    // Cost Initiation Kernel Call
     ci_adcensus(data_img_l, data_img_r, data_cost_l, data_cost_r, ad_coeff, census_coeff, num_disp, zero_disp, num_rows, num_cols, elem_sz);
 	
     //////////////////////
@@ -158,12 +178,9 @@ int main(int argc, char** argv)
     for (int d = 0; d < num_disp; ++d)
         data_acost_r[d] = (float*) mat_acost_r[d].data;
 	
-	// Cost Aggragation Kernel Call
-	
 	ca_cross(data_img_l, data_cost_l, data_acost_l, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
 
 	ca_cross(data_img_r, data_cost_r, data_acost_r, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
-	
 
     ///////////////////////////
     // DISPARITY COMPUTATION //
@@ -175,22 +192,26 @@ int main(int argc, char** argv)
 	float* data_disp_l = (float*) mat_disp_l.data;
 	float* data_disp_r = (float*) mat_disp_r.data;
 
-	// Disparity Computation
-
 	dc_wta(data_acost_l, data_disp_l, num_disp, zero_disp, num_rows, num_cols);
 	dc_wta(data_acost_r, data_disp_r, num_disp, zero_disp, num_rows, num_cols);
-
     
 	//////////
     // DIBR //
     //////////
+
+    Mat mat_occl_l = Mat::zeros(num_rows, num_cols, CV_8UC(1));
+    Mat mat_occl_r = Mat::zeros(num_rows, num_cols, CV_8UC(1));
+    
+    unsigned char* data_occl_l = mat_occl_l.data;
+    unsigned char* data_occl_r = mat_occl_r.data;
+
+    dibr_occl(data_occl_l, data_occl_r, data_disp_l, data_disp_r, num_rows, num_cols);
 	
     std::vector<Mat> mat_views;
 	mat_views.push_back(mat_img_r);
     for (int v = 1; v < num_views - 1; ++v)
 		mat_views.push_back(Mat::zeros(num_rows, num_cols, CV_8UC(3)));
 	mat_views.push_back(mat_img_l);
-    printf("%d \n", (int) mat_views.size());
 
     unsigned char **data_views = (unsigned char **) malloc(sizeof(unsigned char *) * num_views);
     
@@ -209,8 +230,6 @@ int main(int argc, char** argv)
 
     Mat mat_mux = Mat::zeros(num_rows_out, num_cols_out, CV_8UC(3));
     unsigned char* data_mux = mat_mux.data;
-    printf("%d %d %d %d \n", num_rows, num_cols, num_rows_out, num_cols_out);
-    printf("%d %f \n", num_views, angle);
     
     mux_multiview(data_views, data_mux, num_views, angle, num_rows, num_cols, num_rows_out, num_cols_out, elem_sz);
 
@@ -224,19 +243,19 @@ int main(int argc, char** argv)
     }
 	normalize(mat_disp_l, mat_disp_l, 0, 1, CV_MINMAX);
 	normalize(mat_disp_r, mat_disp_r, 0, 1, CV_MINMAX);
+    normalize(mat_occl_l, mat_occl_l, 0, 255, CV_MINMAX);
+    normalize(mat_occl_r, mat_occl_r, 0, 255, CV_MINMAX);
    
-    
-    
     //////////////////
     // TESTING HSLO //
     //////////////////
-
+/*
     float T = 15.0;
     float H1 = 1.0;
     float H2 = 3.0;
 
     dc_hslo(data_cost_l, data_disp_l, data_img_l, data_img_r, T, H1, H2, num_disp, zero_disp, num_rows, num_cols, elem_sz); 
-    
+ */   
     /////////////
     // DISPLAY //
     /////////////
@@ -275,19 +294,22 @@ int main(int argc, char** argv)
             	display_mode = DISPLAY_MODE_DISPARITY;
 				break;
 			case '5':
-            	display_mode = DISPLAY_MODE_MULTIVIEW;
+            	display_mode = DISPLAY_MODE_OCCLUSION;
 				break;
 			case '6':
+            	display_mode = DISPLAY_MODE_MULTIVIEW;
+				break;
+			case '7':
             	display_mode = DISPLAY_MODE_INTERLACED;
 				break;
-			case '=':
+			case ']':
 				if (display_mode == DISPLAY_MODE_COST ||
 					display_mode == DISPLAY_MODE_ACOST)
 					disp_level = min(disp_level + 1, num_disp - 1);
 				else if (display_mode == DISPLAY_MODE_MULTIVIEW)
 					display_view = min(display_view + 1, num_views - 1);
 				break;
-			case '-':
+			case '[':
 				if (display_mode == DISPLAY_MODE_COST ||
 					display_mode == DISPLAY_MODE_ACOST)
 					disp_level = max(disp_level - 1, 0);
@@ -347,6 +369,18 @@ int main(int argc, char** argv)
 				{
 					imshow("Display", mat_disp_r);
 					printf("Showing Right Disparity\n");
+				}
+				break;
+			case DISPLAY_MODE_OCCLUSION:
+				if (display_persp == DISPLAY_PERSP_LEFT)
+				{
+					imshow("Display", mat_occl_l);
+					printf("Showing Left Occlusion\n");
+				}
+				else if (display_persp == DISPLAY_PERSP_RIGHT)
+				{
+					imshow("Display", mat_occl_r);
+					printf("Showing Right Occlusion\n");
 				}
 				break;
 			case DISPLAY_MODE_MULTIVIEW:

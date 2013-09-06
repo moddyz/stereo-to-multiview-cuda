@@ -9,12 +9,8 @@ extern __device__ int alu_hamdist_64(unsigned long long a, unsigned long long b)
     int c = a ^ b;
     unsigned long long mask = 1;
     int dist = 0;
-    for (int i = 0; i < 64; ++i)
-    {
-        if (c & mask == 1)
-            ++dist;
-        c = c >> 1;
-    }
+    for (int i = 0; i < 64; ++i, c >>= 1)
+        dist += c & mask;
     return dist;
 }
 

@@ -354,6 +354,15 @@ void ca_cross(unsigned char* img, float** cost, float** acost,
     ca_cross_vsum_kernel<<<grid_sz, block_sz>>>(d_acost, d_cost, d_cross, num_disp, num_rows, num_cols); 
     stopCudaTimer(&timer, "Cross Vertical Sum");
     
+    
+    startCudaTimer(&timer);
+    ca_cross_vsum_kernel<<<grid_sz, block_sz>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols); 
+    stopCudaTimer(&timer, "Cross Vertical Sum");
+    
+    startCudaTimer(&timer);
+    ca_cross_hsum_kernel<<<grid_sz, block_sz>>>(d_acost, d_cost, d_cross, num_disp, num_rows, num_cols); 
+    stopCudaTimer(&timer, "Cross Horizontal Sum");
+    
     for (int d = 0; d < num_disp; ++d)
     {
         checkCudaError(cudaMemcpy(acost[d], h_cost[d], sizeof(float) * num_cols * num_rows, cudaMemcpyDeviceToHost));

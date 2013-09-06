@@ -11,6 +11,9 @@ __global__ void tx_census_9x7_kernel(unsigned char* img, unsigned long long* cen
     int tx = threadIdx.x + blockIdx.x * blockDim.x;
     int ty = threadIdx.y + blockIdx.y * blockDim.y;
     
+    if ((tx > num_cols - 1) || (ty > num_rows - 1))
+        return;
+    
     int win_h2 = 3; // Half of 7 + anchor
     int win_w2 = 4; // Half of 9 + anchor
 
@@ -53,17 +56,19 @@ __global__ void ci_census_kernel(unsigned long long* census_l, unsigned long lon
     if ((tx > num_cols - 1) || (ty > num_rows - 1))
         return;
 
+    int ty_num_cols = ty * num_cols;
+
     for (int d = 0; d < num_disp; ++d)
     {
         int r_coord = min(max(tx + (d - zero_disp), 0), num_cols - 1);
-        int ll = (tx + ty * num_cols) * elem_sz;
-        int lr = (r_coord + ty * num_cols) * elem_sz;
+        int ll = (tx + ty_num_cols) * elem_sz;
+        int lr = (r_coord + ty_num_cols) * elem_sz;
         float cost_b = (float) alu_hamdist_64(census_l[ll], census_r[lr]);
         float cost_g = (float) alu_hamdist_64(census_l[ll + 1], census_r[lr + 1]);
         float cost_r = (float) alu_hamdist_64(census_l[ll + 2], census_r[lr + 2]);
         float cost = (cost_b + cost_g + cost_r) * 0.33333333333;
-        cost_l[d][tx + ty * num_cols] = cost;
-        cost_R[d][r_coord + ty * num_cols] = cost;
+        cost_l[d][tx + ty_num_cols] = cost;
+        cost_R[d][r_coord + ty_num_cols] = cost;
     }
 }
 

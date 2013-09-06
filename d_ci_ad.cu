@@ -23,16 +23,13 @@ __global__ void ci_ad_kernel(unsigned char* img_l, unsigned char* img_r,
     unsigned char* sm_img_l = sm_img;
     unsigned char* sm_img_r = &sm_img[sm_sz];
     
-    int gsx_lim = min(blockIdx.x * blockDim.x - zero_disp + 1 + sm_w, num_cols - 1);
-    int gsx_init = max(gx - zero_disp + 1, 0);
-
     int ty_smw = ty * sm_w * elem_sz;
     int gy_numcols = gy * num_cols;
 
-    for (int gsx = gsx_init, tsx = tx; gsx < gsx_lim; gsx += blockDim.x, tsx += blockDim.x)
+    for (int gsx = gx - zero_disp + 1, tsx = tx; tsx < sm_w; gsx += blockDim.x, tsx += blockDim.x)
     {
         int sidx = tsx * elem_sz + ty_smw;
-        int gidx = (gsx + gy_numcols) * elem_sz;
+        int gidx = (min(max(gsx, 0), num_cols - 1) + gy_numcols) * elem_sz;
         sm_img_l[sidx] = img_l[gidx];
         sm_img_l[sidx + 1] = img_l[gidx + 1];
         sm_img_l[sidx + 2] = img_l[gidx + 2];
