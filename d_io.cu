@@ -139,12 +139,20 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
     // DIBR //
     //////////
 
+    unsigned char *d_occl_raw_l, *d_occl_raw_r;
+    
+    checkCudaError(cudaMalloc(&d_occl_raw_l, sizeof(unsigned char) * num_rows * num_cols));
+    checkCudaError(cudaMalloc(&d_occl_raw_r, sizeof(unsigned char) * num_rows * num_cols));
+    
+    d_dibr_occl(d_occl_raw_l, d_occl_raw_r, d_disp_l, d_disp_r, num_rows, num_cols);
+    
     unsigned char *d_occl_l, *d_occl_r;
     
     checkCudaError(cudaMalloc(&d_occl_l, sizeof(unsigned char) * num_rows * num_cols));
     checkCudaError(cudaMalloc(&d_occl_r, sizeof(unsigned char) * num_rows * num_cols));
-    
-    d_dibr_occl(d_occl_l, d_occl_r, d_disp_l, d_disp_r, num_rows, num_cols);
+
+    d_filter_bleed_1(d_occl_l, d_occl_raw_l, 1, num_rows, num_cols);    
+    d_filter_bleed_1(d_occl_r, d_occl_raw_r, 1, num_rows, num_cols);    
      
     unsigned char** h_views = (unsigned char**) malloc(sizeof(unsigned char*) * num_views);
     h_views[0] = d_img_r;

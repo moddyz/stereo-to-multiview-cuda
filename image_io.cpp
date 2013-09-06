@@ -211,13 +211,22 @@ int main(int argc, char** argv)
     // DIBR //
     //////////
 
+    Mat mat_occl_raw_l = Mat::zeros(num_rows, num_cols, CV_8UC(1));
+    Mat mat_occl_raw_r = Mat::zeros(num_rows, num_cols, CV_8UC(1));
+    
+    unsigned char* data_occl_raw_l = mat_occl_raw_l.data;
+    unsigned char* data_occl_raw_r = mat_occl_raw_r.data;
+
+    dibr_occl(data_occl_raw_l, data_occl_raw_r, data_disp_l, data_disp_r, num_rows, num_cols);
+    
     Mat mat_occl_l = Mat::zeros(num_rows, num_cols, CV_8UC(1));
     Mat mat_occl_r = Mat::zeros(num_rows, num_cols, CV_8UC(1));
     
     unsigned char* data_occl_l = mat_occl_l.data;
     unsigned char* data_occl_r = mat_occl_r.data;
 
-    dibr_occl(data_occl_l, data_occl_r, data_disp_l, data_disp_r, num_rows, num_cols);
+    filter_bleed_1(data_occl_l, data_occl_raw_l, 1, num_rows, num_cols);
+    filter_bleed_1(data_occl_r, data_occl_raw_r, 1, num_rows, num_cols);
 	
     std::vector<Mat> mat_views;
 	mat_views.push_back(mat_img_r);
