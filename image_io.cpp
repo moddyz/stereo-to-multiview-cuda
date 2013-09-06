@@ -6,6 +6,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv/cvaux.h>
+#include "d_filter.h"
 #include "d_dibr_occl.h"
 #include "d_dibr_fwarp.h"
 #include "d_dibr_bwarp.h"
@@ -189,20 +190,22 @@ int main(int argc, char** argv)
 	
 	Mat mat_disp_pl = Mat::zeros(num_rows, num_cols, CV_32FC1);
 	Mat mat_disp_pr = Mat::zeros(num_rows, num_cols, CV_32FC1);
-	Mat mat_disp_l = Mat::zeros(num_rows, num_cols, CV_32FC1);
-	Mat mat_disp_r = Mat::zeros(num_rows, num_cols, CV_32FC1);
 
-	float* data_disp_l = (float*) mat_disp_pl.data;
-	float* data_disp_r = (float*) mat_disp_pr.data;
-
-	dc_wta(data_acost_l, data_disp_l, num_disp, zero_disp, num_rows, num_cols);
-	dc_wta(data_acost_r, data_disp_r, num_disp, zero_disp, num_rows, num_cols);
-
-    bilateralFilter(mat_disp_pl, mat_disp_l, -1, 5, 10);
-    bilateralFilter(mat_disp_pr, mat_disp_r, -1, 5, 10);
+	float* data_disp_pl = (float*) mat_disp_pl.data;
+	float* data_disp_pr = (float*) mat_disp_pr.data;
 	
-    data_disp_l = (float*) mat_disp_l.data;
-	data_disp_r = (float*) mat_disp_r.data;
+    dc_wta(data_acost_l, data_disp_pl, num_disp, zero_disp, num_rows, num_cols);
+	dc_wta(data_acost_r, data_disp_pr, num_disp, zero_disp, num_rows, num_cols);
+	
+    Mat mat_disp_l = Mat::zeros(num_rows, num_cols, CV_32FC1);
+	Mat mat_disp_r = Mat::zeros(num_rows, num_cols, CV_32FC1);
+    
+    float* data_disp_l = (float*) mat_disp_l.data;
+	float* data_disp_r = (float*) mat_disp_r.data;
+
+    filter_bilateral_1(data_disp_l, data_disp_pl, 7, 5, 10, num_rows, num_cols);
+    filter_bilateral_1(data_disp_r, data_disp_pr, 7, 5, 10, num_rows, num_cols);
+	
     
 	//////////
     // DIBR //

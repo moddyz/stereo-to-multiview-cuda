@@ -104,20 +104,29 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
     ///////////////////////////
     // DISPARITY COMPUTATION //
     ///////////////////////////
+    float* d_disp_raw_l, *d_disp_raw_r;
+    
+    checkCudaError(cudaMalloc(&d_disp_raw_l, sizeof(float) * num_rows * num_cols));
+    checkCudaError(cudaMalloc(&d_disp_raw_r, sizeof(float) * num_rows * num_cols));
+    
+    d_dc_wta(d_acost_l, d_disp_raw_l, num_disp, zero_disp, num_rows, num_cols);
+    d_dc_wta(d_acost_r, d_disp_raw_r, num_disp, zero_disp, num_rows, num_cols);
 
     float* d_disp_l, *d_disp_r;
     
     checkCudaError(cudaMalloc(&d_disp_l, sizeof(float) * num_rows * num_cols));
     checkCudaError(cudaMalloc(&d_disp_r, sizeof(float) * num_rows * num_cols));
-
-    d_dc_wta(d_acost_l, d_disp_l, num_disp, zero_disp, num_rows, num_cols);
-    d_dc_wta(d_acost_r, d_disp_r, num_disp, zero_disp, num_rows, num_cols);
+    
+    d_filter_bilateral_1(d_disp_l, d_disp_raw_l, 7, 5, 10, num_rows, num_cols);
+    d_filter_bilateral_1(d_disp_r, d_disp_raw_r, 7, 5, 10, num_rows, num_cols);
 
     checkCudaError(cudaMemcpy(disp_l, d_disp_l, sizeof(float) * num_rows * num_cols, cudaMemcpyDeviceToHost));
     checkCudaError(cudaMemcpy(disp_r, d_disp_r, sizeof(float) * num_rows * num_cols, cudaMemcpyDeviceToHost));
      
     cudaFree(d_acost_l);
     cudaFree(d_acost_r);
+    cudaFree(d_disp_raw_l);
+    cudaFree(d_disp_raw_r);
     for (int d = 0; d < num_disp; ++d)
     {
         cudaFree(h_acost_l[d]);

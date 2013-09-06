@@ -1,6 +1,8 @@
 #ifndef D_IO_H
 #define D_IO_H
+
 // User Sources
+#include "d_filter.h"
 #include "d_dibr_fwarp.h"
 #include "d_dibr_bwarp.h"
 #include "d_dibr_occl.h"
