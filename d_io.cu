@@ -1,5 +1,7 @@
 #ifndef D_IO_KERNEL 
 #define D_IO_KERNEL
+#include <opencv2/core/core.hpp>
+#include <opencv2/opencv.hpp>
 #include "d_io.h"
 #include "cuda_utils.h"
 #include <math.h>
@@ -127,7 +129,14 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
     //////////
     // DIBR //
     //////////
+
+    unsigned char *d_occl_l, *d_occl_r;
     
+    checkCudaError(cudaMalloc(&d_occl_l, sizeof(unsigned char) * num_rows * num_cols));
+    checkCudaError(cudaMalloc(&d_occl_r, sizeof(unsigned char) * num_rows * num_cols));
+    
+    d_dibr_occl(d_occl_l, d_occl_r, d_disp_l, d_disp_r, num_rows, num_cols);
+     
     unsigned char** h_views = (unsigned char**) malloc(sizeof(unsigned char*) * num_views);
     h_views[0] = d_img_r;
     h_views[num_views - 1] = d_img_l;
@@ -137,7 +146,7 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
     for (int v = 1; v < num_views - 1; ++v)
     {   
         float shift = 1.0 - ((1.0 * (float) v) / ((float) num_views - 1.0));
-        d_dibr_dfm(h_views[v], d_img_l, d_img_r, d_disp_l, d_disp_r, shift, num_rows, num_cols, elem_sz);
+        d_dibr_dbm(h_views[v], d_img_l, d_img_r, d_disp_l, d_disp_r, d_occl_l, d_occl_r, shift, num_rows, num_cols, elem_sz);
     }
 
     for (int v = 1; v <  num_views - 1; ++v)
@@ -165,6 +174,8 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
     cudaFree(d_img_r);
     cudaFree(d_disp_l);
     cudaFree(d_disp_r);
+    cudaFree(d_occl_l);
+    cudaFree(d_occl_r);
     for (int v = 1; v < num_views - 1; ++v)
         cudaFree(h_views[v]);
     free(h_views);

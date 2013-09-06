@@ -19,10 +19,4 @@ void dibr_dfm(unsigned char* img_out,
               float* disp_l, float* disp_r,
               float shift, int num_rows, int num_cols, int elem_sz);
 
-void dibr_dbm(unsigned char* img_out,
-              unsigned char* img_in_l, unsigned char* img_in_r, 
-              float* disp_l, float* disp_r,
-              unsigned char *occl_l, unsigned char *occl_r,
-              float shift, int num_rows, int num_cols, int elem_sz);
-
 #endif

@@ -1,7 +1,9 @@
 #ifndef D_IO_H
 #define D_IO_H
 // User Sources
-#include "d_dibr_warp.h"
+#include "d_dibr_fwarp.h"
+#include "d_dibr_bwarp.h"
+#include "d_dibr_occl.h"
 #include "d_dc_wta.h"
 #include "d_dc_hslo.h"
 #include "d_ca_cross.h"

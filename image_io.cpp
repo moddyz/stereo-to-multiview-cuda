@@ -7,7 +7,8 @@
 #include <opencv2/opencv.hpp>
 #include <opencv/cvaux.h>
 #include "d_dibr_occl.h"
-#include "d_dibr_warp.h"
+#include "d_dibr_fwarp.h"
+#include "d_dibr_bwarp.h"
 #include "d_dc_wta.h"
 #include "d_dc_hslo.h"
 #include "d_ca_cross.h"
@@ -186,14 +187,22 @@ int main(int argc, char** argv)
     // DISPARITY COMPUTATION //
     ///////////////////////////
 	
-	Mat mat_disp_l = Mat::zeros(num_rows, num_cols, CV_32F);
-	Mat mat_disp_r = Mat::zeros(num_rows, num_cols, CV_32F);
+	Mat mat_disp_pl = Mat::zeros(num_rows, num_cols, CV_32FC1);
+	Mat mat_disp_pr = Mat::zeros(num_rows, num_cols, CV_32FC1);
+	Mat mat_disp_l = Mat::zeros(num_rows, num_cols, CV_32FC1);
+	Mat mat_disp_r = Mat::zeros(num_rows, num_cols, CV_32FC1);
 
-	float* data_disp_l = (float*) mat_disp_l.data;
-	float* data_disp_r = (float*) mat_disp_r.data;
+	float* data_disp_l = (float*) mat_disp_pl.data;
+	float* data_disp_r = (float*) mat_disp_pr.data;
 
 	dc_wta(data_acost_l, data_disp_l, num_disp, zero_disp, num_rows, num_cols);
 	dc_wta(data_acost_r, data_disp_r, num_disp, zero_disp, num_rows, num_cols);
+
+    bilateralFilter(mat_disp_pl, mat_disp_l, -1, 5, 10);
+    bilateralFilter(mat_disp_pr, mat_disp_r, -1, 5, 10);
+	
+    data_disp_l = (float*) mat_disp_l.data;
+	data_disp_r = (float*) mat_disp_r.data;
     
 	//////////
     // DIBR //
@@ -221,7 +230,7 @@ int main(int argc, char** argv)
     for (int v = 1; v < num_views - 1; ++v)
     {
         float shift = 1.0 - ((1.0 * (float) v) / ((float) num_views - 1.0));
-        dibr_dfm(data_views[v], data_img_l, data_img_r, data_disp_l, data_disp_r, shift, num_rows, num_cols, elem_sz);
+        dibr_dbm(data_views[v], data_img_l, data_img_r, data_disp_l, data_disp_r, data_occl_l, data_occl_r, shift, num_rows, num_cols, elem_sz);
     }
 
 	/////////
