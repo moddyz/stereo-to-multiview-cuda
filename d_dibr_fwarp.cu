@@ -1,6 +1,7 @@
 #ifndef D_DIBR_FWARP_KERNEL 
 #define D_DIBR_FWARP_KERNEL
 #include "d_dibr_fwarp.h"
+#include "d_dibr_occl.h"
 #include "d_mux_common.h"
 #include "cuda_utils.h"
 #include <math.h>
@@ -59,10 +60,15 @@ void d_dibr_dfm(unsigned char* d_img_out,
     
     checkCudaError(cudaMemset(d_occl_l, 0, sizeof(unsigned char) * num_rows * num_cols));
     checkCudaError(cudaMemset(d_occl_r, 0, sizeof(unsigned char) * num_rows * num_cols));
-    
+
+    float *d_mask_l;
+    checkCudaError(cudaMalloc(&d_mask_l, sizeof(float) * num_rows * num_cols));
+
     /////////////////// 
     // LAUNCH KERNEL //
     ///////////////////
+
+    dibr_occl_to_mask_kernel<<<grid_sz, block_sz>>>(d_mask_l, d_occl_l, num_rows, num_cols);
     
     dibr_forward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_occl_l, d_img_in_l, d_disp_l, shift, num_rows, num_cols, elem_sz);  
     cudaDeviceSynchronize();
@@ -70,7 +76,7 @@ void d_dibr_dfm(unsigned char* d_img_out,
     dibr_forward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_r, d_occl_r, d_img_in_r, d_disp_r, 1.0 - shift, num_rows, num_cols, elem_sz);  
     cudaDeviceSynchronize();
     
-    mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_img_out_r, d_occl_l, num_rows, num_cols, elem_sz);  
+    mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_img_out_r, d_mask_l, num_rows, num_cols, elem_sz);  
     cudaDeviceSynchronize();
     
     ///////////////// 
@@ -87,6 +93,7 @@ void d_dibr_dfm(unsigned char* d_img_out,
     cudaFree(d_img_out_r);
     cudaFree(d_occl_l);
     cudaFree(d_occl_r);
+    cudaFree(d_mask_l);
 }
 
 void dibr_dfm(unsigned char* img_out,
@@ -142,6 +149,13 @@ void dibr_dfm(unsigned char* img_out,
     checkCudaError(cudaMemset(d_occl_l, 0, sizeof(unsigned char) * num_rows * num_cols));
     checkCudaError(cudaMemset(d_occl_r, 0, sizeof(unsigned char) * num_rows * num_cols));
     
+    float *d_mask_l;
+    checkCudaError(cudaMalloc(&d_mask_l, sizeof(float) * num_rows * num_cols));
+
+    startCudaTimer(&timer);
+    dibr_occl_to_mask_kernel<<<grid_sz, block_sz>>>(d_mask_l, d_occl_l, num_rows, num_cols);
+    stopCudaTimer(&timer, "DIBR Occl to Mask Kernel");
+    
     /////////////////// 
     // LAUNCH KERNEL //
     ///////////////////
@@ -155,7 +169,7 @@ void dibr_dfm(unsigned char* img_out,
     stopCudaTimer(&timer, "DIBR Forward Map Kernel");
     
     startCudaTimer(&timer);
-    mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_img_out_r, d_occl_l, num_rows, num_cols, elem_sz);  
+    mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_img_out_r, d_mask_l, num_rows, num_cols, elem_sz);  
     stopCudaTimer(&timer, "Merge Kernel");
     
     ///////////////// 
@@ -176,6 +190,7 @@ void dibr_dfm(unsigned char* img_out,
     cudaFree(d_img_out_r);
     cudaFree(d_occl_l);
     cudaFree(d_occl_r);
+    cudaFree(d_mask_l);
     cudaFree(d_img_out_r);
 }
 

@@ -21,11 +21,11 @@ __global__ void filter_bilateral_1_kernel(float *img_out, float *img_in, float* 
                                    int radius, float sigma_color, float sigma_spatial,
                                    int num_rows, int num_cols);
 
-void d_filter_bilateral_1(float *d_img_out, float *d_img_in,
+void d_filter_bilateral_1(float *d_img,
                           int radius, float sigma_color, float sigma_spatial,
                           int num_rows, int num_cols);
 
-void filter_bilateral_1(float *img_out, float *img_in,
+void filter_bilateral_1(float *img,
                         int radius, float sigma_color, float sigma_spatial,
                         int num_rows, int num_cols);
 

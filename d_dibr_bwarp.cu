@@ -1,13 +1,12 @@
 #ifndef D_DIBR_BWARP_KERNEL 
 #define D_DIBR_BWARP_KERNEL
-#include "d_dibr_bwarp.h"#
-#include "d_alu.h"
-#include "d_mux_common.h"
+#include "d_dibr_bwarp.h"
+#include "d_op.h"
 #include "cuda_utils.h"
 #include <math.h>
 
 __global__ void dibr_backward_warp_kernel(unsigned char* img_out, unsigned char* img_in,
-                                          unsigned char* occl, float *disp,
+                                          float* mask, float *disp,
                                           float shift, int num_rows, int num_cols, int elem_sz)
 {
     int tx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -16,15 +15,13 @@ __global__ void dibr_backward_warp_kernel(unsigned char* img_out, unsigned char*
     if ((tx > num_cols - 1) || (ty > num_rows - 1))
         return;
 
-    if (occl[tx + ty * num_cols] == 0)
-        return;
-    
+    float val_mask = mask[tx + ty * num_cols];
     float sd = (disp[tx + ty * num_cols] * shift); 
     int sx = min(max((float) tx + sd, 0.0f), (float)(num_cols - 1));
 
-    img_out[(tx + ty * num_cols) * elem_sz] = alu_bilinear_interp(img_in, elem_sz, 0, sx, (float) ty, num_cols, num_rows);
-    img_out[(tx + ty * num_cols) * elem_sz + 1] = alu_bilinear_interp(img_in, elem_sz, 1, sx, (float)ty, num_cols, num_rows);
-    img_out[(tx + ty * num_cols) * elem_sz + 2] = alu_bilinear_interp(img_in, elem_sz, 2, sx, (float)ty, num_cols, num_rows);
+    img_out[(tx + ty * num_cols) * elem_sz] = (unsigned char) ((float) alu_bilinear_interp(img_in, elem_sz, 0, sx, (float) ty, num_cols, num_rows) * val_mask);
+    img_out[(tx + ty * num_cols) * elem_sz + 1] = (unsigned char) ((float) alu_bilinear_interp(img_in, elem_sz, 1, sx, (float) ty, num_cols, num_rows) * val_mask);
+    img_out[(tx + ty * num_cols) * elem_sz + 2] = (unsigned char) ((float) alu_bilinear_interp(img_in, elem_sz, 2, sx, (float) ty, num_cols, num_rows) * val_mask);
 }
 
 void d_dibr_dbm(unsigned char* d_img_out,
@@ -47,20 +44,33 @@ void d_dibr_dbm(unsigned char* d_img_out,
     //////////// 
     // KERNEL //
     ////////////
+    float *d_mask_l, *d_mask_r;
+
+    checkCudaError(cudaMalloc(&d_mask_l, sizeof(float) * num_rows * num_cols));
+    checkCudaError(cudaMalloc(&d_mask_r, sizeof(float) * num_rows * num_cols));
+    
+    dibr_occl_to_mask_kernel<<<grid_sz, block_sz>>>(d_mask_l, d_occl_l, num_rows, num_cols);
+    dibr_occl_to_mask_kernel<<<grid_sz, block_sz>>>(d_mask_r, d_occl_r, num_rows, num_cols);
+
     unsigned char* d_img_out_r; 
     checkCudaError(cudaMalloc(&d_img_out_r, sizeof(unsigned char) * num_rows * num_cols * elem_sz));
     
     checkCudaError(cudaMemset(d_img_out, 0, sizeof(unsigned char) * num_rows * num_cols * elem_sz));
     checkCudaError(cudaMemset(d_img_out_r, 0, sizeof(unsigned char) * num_rows * num_cols * elem_sz));
 
-    dibr_backward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out, d_img_in_l, d_occl_r, d_disp_r, -shift, num_rows, num_cols, elem_sz);   
-    dibr_backward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_r, d_img_in_r, d_occl_l, d_disp_l, 1.0 - shift, num_rows, num_cols, elem_sz);
+    dibr_backward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out, d_img_in_l, d_mask_r, d_disp_r, -shift, num_rows, num_cols, elem_sz);   
+    dibr_backward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_r, d_img_in_r, d_mask_l, d_disp_l, 1.0 - shift, num_rows, num_cols, elem_sz);
     cudaDeviceSynchronize();
     
-    mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out, d_img_out_r, d_occl_r, num_rows, num_cols, elem_sz);  
+    op_invertnormf_kernel<<<grid_sz, block_sz>>>(d_mask_r, num_rows, num_cols);
+    cudaDeviceSynchronize(); 
+
+    mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out, d_img_out_r, d_mask_r, num_rows, num_cols, elem_sz);  
     cudaDeviceSynchronize(); 
 
     cudaFree(d_img_out_r);
+    cudaFree(d_mask_l);
+    cudaFree(d_mask_r);
 }
 
 
@@ -68,6 +78,7 @@ void dibr_dbm(unsigned char* img_out,
               unsigned char* img_in_l, unsigned char* img_in_r, 
               float* disp_l, float* disp_r,
               unsigned char *occl_l, unsigned char *occl_r,
+              float *mask_l, float *mask_r,
               float shift, int num_rows, int num_cols, int elem_sz)
 {
     cudaEventPair_t timer;
@@ -93,6 +104,13 @@ void dibr_dbm(unsigned char* img_out,
     
     checkCudaError(cudaMemcpy(d_occl_l, occl_l, sizeof(unsigned char) * num_rows * num_cols, cudaMemcpyHostToDevice));
     checkCudaError(cudaMemcpy(d_occl_r, occl_r, sizeof(unsigned char) * num_rows * num_cols, cudaMemcpyHostToDevice));
+    
+    float* d_mask_l, *d_mask_r; 
+
+    checkCudaError(cudaMalloc(&d_mask_l, sizeof(float) * num_rows * num_cols));
+    checkCudaError(cudaMalloc(&d_mask_r, sizeof(float) * num_rows * num_cols));
+    
+    d_dibr_occl_to_mask(d_mask_l, d_mask_r, d_occl_l, d_occl_r, num_rows, num_cols);
     
     /////////////////////// 
     // MEMORY ALLOCATION //
@@ -122,23 +140,32 @@ void dibr_dbm(unsigned char* img_out,
     checkCudaError(cudaMemset(d_img_out_r, 0, sizeof(unsigned char) * num_rows * num_cols * elem_sz));
 
     startCudaTimer(&timer);
-    dibr_backward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_img_in_l, d_occl_r, d_disp_r, -shift, num_rows, num_cols, elem_sz);  
+    dibr_backward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_img_in_l, d_mask_r, d_disp_r, -shift, num_rows, num_cols, elem_sz);  
     stopCudaTimer(&timer, "DIBR Backward Map Kernel");
     
     startCudaTimer(&timer);
-    dibr_backward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_r, d_img_in_r, d_occl_l, d_disp_l, 1.0 - shift, num_rows, num_cols, elem_sz);  
+    dibr_backward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_r, d_img_in_r, d_mask_l, d_disp_l, 1.0 - shift, num_rows, num_cols, elem_sz);  
     stopCudaTimer(&timer, "DIBR Backward Map Kernel");
     
     startCudaTimer(&timer);
-    mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_img_out_r, d_occl_r, num_rows, num_cols, elem_sz);  
+    op_invertnormf_kernel<<<grid_sz, block_sz>>>(d_mask_r, num_rows, num_cols);
+    stopCudaTimer(&timer, "OP Invert Normalized Float Map Kernel");
+    
+    startCudaTimer(&timer);
+    mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_img_out_r, d_mask_r, num_rows, num_cols, elem_sz);  
     stopCudaTimer(&timer, "Merge Kernel");
     
+    startCudaTimer(&timer);
+    op_invertnormf_kernel<<<grid_sz, block_sz>>>(d_mask_r, num_rows, num_cols);
+    stopCudaTimer(&timer, "OP Invert Normalized Float Map Kernel");
     ///////////////// 
     // MEMORY COPY //
     /////////////////
 
     checkCudaError(cudaMemcpy(img_out, d_img_out_l, sizeof(unsigned char) * num_rows * num_cols * elem_sz, cudaMemcpyDeviceToHost));
 
+    checkCudaError(cudaMemcpy(mask_l, d_mask_l, sizeof(float) * num_rows * num_cols, cudaMemcpyDeviceToHost));
+    checkCudaError(cudaMemcpy(mask_r, d_mask_r, sizeof(float) * num_rows * num_cols, cudaMemcpyDeviceToHost));
     /////////////////// 
     // DE-ALLOCATION //
     ///////////////////
@@ -151,7 +178,8 @@ void dibr_dbm(unsigned char* img_out,
     cudaFree(d_img_out_r);
     cudaFree(d_occl_l);
     cudaFree(d_occl_r);
-    cudaFree(d_img_out_r);
+    cudaFree(d_mask_l);
+    cudaFree(d_mask_r);
 }
 
 #endif

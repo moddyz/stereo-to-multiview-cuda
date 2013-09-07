@@ -35,6 +35,7 @@ typedef enum
     DISPLAY_MODE_ACOST,
     DISPLAY_MODE_DISPARITY,
     DISPLAY_MODE_OCCLUSION,
+    DISPLAY_MODE_MASK,
     DISPLAY_MODE_MULTIVIEW,
     DISPLAY_MODE_INTERLACED,
 } display_mode_e;
@@ -188,25 +189,20 @@ int main(int argc, char** argv)
     // DISPARITY COMPUTATION //
     ///////////////////////////
 	
-	Mat mat_disp_pl = Mat::zeros(num_rows, num_cols, CV_32FC1);
-	Mat mat_disp_pr = Mat::zeros(num_rows, num_cols, CV_32FC1);
-
-	float* data_disp_pl = (float*) mat_disp_pl.data;
-	float* data_disp_pr = (float*) mat_disp_pr.data;
-	
-    dc_wta(data_acost_l, data_disp_pl, num_disp, zero_disp, num_rows, num_cols);
-	dc_wta(data_acost_r, data_disp_pr, num_disp, zero_disp, num_rows, num_cols);
-	
     Mat mat_disp_l = Mat::zeros(num_rows, num_cols, CV_32FC1);
 	Mat mat_disp_r = Mat::zeros(num_rows, num_cols, CV_32FC1);
     
     float* data_disp_l = (float*) mat_disp_l.data;
 	float* data_disp_r = (float*) mat_disp_r.data;
-
-    filter_bilateral_1(data_disp_l, data_disp_pl, 7, 5, 10, num_rows, num_cols);
-    filter_bilateral_1(data_disp_r, data_disp_pr, 7, 5, 10, num_rows, num_cols);
-	
     
+    dc_wta(data_acost_l, data_disp_l, num_disp, zero_disp, num_rows, num_cols);
+	dc_wta(data_acost_r, data_disp_r, num_disp, zero_disp, num_rows, num_cols);
+	
+	filter_bilateral_1(data_disp_l, 7, 5, 10, num_rows, num_cols);
+    filter_bilateral_1(data_disp_r, 7, 5, 10, num_rows, num_cols);
+	
+	
+	
 	//////////
     // DIBR //
     //////////
@@ -227,7 +223,15 @@ int main(int argc, char** argv)
 
     filter_bleed_1(data_occl_l, data_occl_raw_l, 1, num_rows, num_cols);
     filter_bleed_1(data_occl_r, data_occl_raw_r, 1, num_rows, num_cols);
+
+	Mat mat_mask_l = Mat::zeros(num_rows, num_cols, CV_32FC1);
+	Mat mat_mask_r = Mat::zeros(num_rows, num_cols, CV_32FC1);
 	
+	float *data_mask_l = (float*) mat_mask_l.data;
+	float *data_mask_r = (float*) mat_mask_r.data;
+
+	dibr_occl_to_mask(data_mask_l, data_mask_r, data_occl_l, data_occl_r, num_rows, num_cols);
+ 	
     std::vector<Mat> mat_views;
 	mat_views.push_back(mat_img_r);
     for (int v = 1; v < num_views - 1; ++v)
@@ -242,7 +246,7 @@ int main(int argc, char** argv)
     for (int v = 1; v < num_views - 1; ++v)
     {
         float shift = 1.0 - ((1.0 * (float) v) / ((float) num_views - 1.0));
-        dibr_dbm(data_views[v], data_img_l, data_img_r, data_disp_l, data_disp_r, data_occl_l, data_occl_r, shift, num_rows, num_cols, elem_sz);
+        dibr_dbm(data_views[v], data_img_l, data_img_r, data_disp_l, data_disp_r, data_occl_l, data_occl_r, data_mask_l, data_mask_r, shift, num_rows, num_cols, elem_sz);
     }
 
 	/////////
@@ -318,9 +322,12 @@ int main(int argc, char** argv)
             	display_mode = DISPLAY_MODE_OCCLUSION;
 				break;
 			case '6':
-            	display_mode = DISPLAY_MODE_MULTIVIEW;
+            	display_mode = DISPLAY_MODE_MASK;
 				break;
 			case '7':
+            	display_mode = DISPLAY_MODE_MULTIVIEW;
+				break;
+			case '8':
             	display_mode = DISPLAY_MODE_INTERLACED;
 				break;
 			case ']':
@@ -402,6 +409,18 @@ int main(int argc, char** argv)
 				{
 					imshow("Display", mat_occl_r);
 					printf("Showing Right Occlusion\n");
+				}
+				break;
+			case DISPLAY_MODE_MASK:
+				if (display_persp == DISPLAY_PERSP_LEFT)
+				{
+					imshow("Display", mat_mask_l);
+					printf("Showing Left Mask\n");
+				}
+				else if (display_persp == DISPLAY_PERSP_RIGHT)
+				{
+					imshow("Display", mat_mask_r);
+					printf("Showing Right Mask\n");
 				}
 				break;
 			case DISPLAY_MODE_MULTIVIEW:

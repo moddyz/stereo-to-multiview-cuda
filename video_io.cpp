@@ -1,7 +1,9 @@
 #include <iostream>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctime>
 #include <vector>
+#include "getCPUtime.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
@@ -154,8 +156,13 @@ int main( int argc, char **argv)
         Mat mat_interlaced = Mat::zeros(num_rows_out, num_cols_out, CV_8UC(3));
 
         unsigned char* data_interlaced = mat_interlaced.data;
-        
+       	
+		double startTime, endTime;
+		startTime = getCPUTime();
         adcensus_stm(data_sbs, data_disp_l, data_disp_r, data_views, data_interlaced, num_rows, num_cols_sbs, num_cols, num_rows_out, num_cols_out, elem_sz, num_views, angle, num_disp, zero_disp, ad_coeff, census_coeff, ucd, lcd, usd, lsd);
+		endTime = getCPUTime();
+
+		fprintf( stderr, "CPU time used = %1f\n", (endTime - startTime));
     
         normalize(mat_disp_l, mat_disp_l, 0, 1, CV_MINMAX);
         normalize(mat_disp_r, mat_disp_r, 0, 1, CV_MINMAX);

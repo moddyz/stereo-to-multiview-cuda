@@ -6,6 +6,14 @@
 
 #define PI 3.14159265359f
 
+__global__ void filter_gauss_1F_kernel(float* img_out, float* img_in,
+                                       float sigma_spatial, int radius,
+                                       float *kernel, int kernel_sz,
+                                       int num_rows, int num_cols)
+{
+}
+                                       
+
 __global__ void filter_bleed_1_kernel(unsigned char *img_out, unsigned char *img_in,
                                       int radius, int kernel_sz,
                                       int num_rows, int num_cols)
@@ -170,7 +178,7 @@ void generateGaussianKernel(float* kernel, int radius, float sigma)
     }
 }
 
-void d_filter_bilateral_1(float *d_img_out, float *d_img_in,
+void d_filter_bilateral_1(float *d_img,
                           int radius, float sigma_color, float sigma_spatial,
                           int num_rows, int num_cols)
 {
@@ -189,18 +197,24 @@ void d_filter_bilateral_1(float *d_img_out, float *d_img_in,
     generateGaussianKernel(kernel, radius, sigma_spatial);
     
     // Device Memory Allocation & Copy
+    float* d_img_out;
+    checkCudaError(cudaMalloc(&d_img_out, sizeof(float) * num_rows * num_cols));
+    
     float* d_kernel;
     checkCudaError(cudaMalloc(&d_kernel, sizeof(float) * kernel_sz));
     checkCudaError(cudaMemcpy(d_kernel, kernel, sizeof(float) * kernel_sz, cudaMemcpyHostToDevice));
     
-    filter_bilateral_1_kernel<<<grid_sz, block_sz>>>(d_img_out, d_img_in, d_kernel, radius, sigma_color, sigma_spatial, num_rows, num_cols);
+    filter_bilateral_1_kernel<<<grid_sz, block_sz>>>(d_img_out, d_img, d_kernel, radius, sigma_color, sigma_spatial, num_rows, num_cols);
     cudaDeviceSynchronize(); 
 
+    checkCudaError(cudaMemcpy(d_img, d_img_out, sizeof(float) * num_rows * num_cols, cudaMemcpyDeviceToDevice));
+    
+    cudaFree(d_img_out);
     free(kernel);
     cudaFree(d_kernel);
 }
 
-void filter_bilateral_1(float *img_out, float *img_in,
+void filter_bilateral_1(float *img,
                         int radius, float sigma_color, float sigma_spatial,
                         int num_rows, int num_cols)
 {
@@ -225,7 +239,7 @@ void filter_bilateral_1(float *img_out, float *img_in,
     float* d_img_out;
 
     checkCudaError(cudaMalloc(&d_img_in, sizeof(float) * num_rows * num_cols));
-    checkCudaError(cudaMemcpy(d_img_in, img_in, sizeof(float) * num_rows * num_cols, cudaMemcpyHostToDevice));
+    checkCudaError(cudaMemcpy(d_img_in, img, sizeof(float) * num_rows * num_cols, cudaMemcpyHostToDevice));
 
     checkCudaError(cudaMalloc(&d_img_out, sizeof(float) * num_rows * num_cols));
 
@@ -237,7 +251,7 @@ void filter_bilateral_1(float *img_out, float *img_in,
     filter_bilateral_1_kernel<<<grid_sz, block_sz>>>(d_img_out, d_img_in, d_kernel, radius, sigma_color, sigma_spatial, num_rows, num_cols);
     stopCudaTimer(&timer, "Bilateral Filter (1 Component) Kernel");
     
-    checkCudaError(cudaMemcpy(img_out, d_img_out, sizeof(float) * num_rows * num_cols, cudaMemcpyDeviceToHost));
+    checkCudaError(cudaMemcpy(img, d_img_out, sizeof(float) * num_rows * num_cols, cudaMemcpyDeviceToHost));
 
     free(kernel);
     cudaFree(d_kernel);
