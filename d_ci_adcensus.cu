@@ -220,10 +220,14 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
     checkCudaError(cudaMemcpy(d_ad_cost_l, h_ad_cost_l, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
     checkCudaError(cudaMemcpy(d_ad_cost_r, h_ad_cost_r, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
     
-    // Launch Kernel
+    //
     startCudaTimer(&timer);
     ci_ad_kernel_2<<<grid_sz, block_sz>>>(d_img_l, d_img_r, d_ad_cost_l, d_ad_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz);
-    stopCudaTimer(&timer, "Absolute Difference Kernel");
+    stopCudaTimer(&timer, "Absolute Difference Kernel #2");
+    // Launch Kernel
+    startCudaTimer(&timer);
+    ci_ad_kernel_3<<<grid_sz, block_sz>>>(d_img_l, d_img_r, d_ad_cost_l, d_ad_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz);
+    stopCudaTimer(&timer, "Absolute Difference Kernel #3");
 
     ////////////
     // CENSUS //
