@@ -96,12 +96,12 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
     
     d_ca_cross(d_img_r, d_adcensus_cost_r, h_adcensus_cost_r, d_acost_r, h_acost_r, d_acost_memory + cost_sz, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
 
-    cudaFree(d_adcensus_cost_l);
-    cudaFree(d_adcensus_cost_r);
-    cudaFree(d_adcensus_cost_memory);
-    free(h_adcensus_cost_l); 
-    free(h_adcensus_cost_r); 
     
+    cudaFree(d_acost_l);
+    cudaFree(d_acost_r);
+    cudaFree(d_acost_memory);
+    free(h_acost_l); 
+    free(h_acost_r); 
     ///////////////////////////
     // DISPARITY COMPUTATION //
     ///////////////////////////
@@ -111,8 +111,8 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
     checkCudaError(cudaMalloc(&d_disp_l, sizeof(float) * img_sz));
     checkCudaError(cudaMalloc(&d_disp_r, sizeof(float) * img_sz));
 	
-	d_dc_wta(d_acost_l, d_disp_l, num_disp, zero_disp, num_rows, num_cols);
-    d_dc_wta(d_acost_r, d_disp_r, num_disp, zero_disp, num_rows, num_cols);
+	d_dc_wta(d_adcensus_cost_l, d_disp_l, num_disp, zero_disp, num_rows, num_cols);
+    d_dc_wta(d_adcensus_cost_r, d_disp_r, num_disp, zero_disp, num_rows, num_cols);
     
     d_filter_bilateral_1(d_disp_l, 7, 5, 10, num_rows, num_cols);
     d_filter_bilateral_1(d_disp_r, 7, 5, 10, num_rows, num_cols);
@@ -120,11 +120,12 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
     checkCudaError(cudaMemcpy(disp_l, d_disp_l, sizeof(float) * img_sz, cudaMemcpyDeviceToHost));
     checkCudaError(cudaMemcpy(disp_r, d_disp_r, sizeof(float) * img_sz, cudaMemcpyDeviceToHost));
      
-    cudaFree(d_acost_l);
-    cudaFree(d_acost_r);
-    cudaFree(d_acost_memory);
-    free(h_acost_l); 
-    free(h_acost_r); 
+    
+	cudaFree(d_adcensus_cost_l);
+    cudaFree(d_adcensus_cost_r);
+    cudaFree(d_adcensus_cost_memory);
+    free(h_adcensus_cost_l); 
+    free(h_adcensus_cost_r); 
     
     //////////
     // DIBR //

@@ -12,6 +12,10 @@ __global__ void ca_cross_hsum_kernel_2(float** cost, float** acost, unsigned cha
 __global__ void ca_cross_hsum_kernel(float** cost, float** acost, unsigned char** cross,
                                      int num_disp, int num_rows, int num_cols);
 
+__global__ void ca_cross_vsum_kernel_2(float** cost, float** acost, unsigned char** cross,
+                                       int num_disp, int num_rows, int num_cols,
+                                       int sm_rows, int sm_sz, int sm_padding);
+
 __global__ void ca_cross_vsum_kernel(float** cost, float** acost, unsigned char** cross,
                                      int num_disp, int num_rows, int num_cols);
 #endif

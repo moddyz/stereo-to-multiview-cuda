@@ -167,8 +167,8 @@ void d_ca_cross(unsigned char* d_img, float** d_cost, float **h_cost,
     // DEVICE PARAMETERS //
     ///////////////////////
     
-    size_t bw = 32;
-    size_t bh = 32;
+    size_t bw = 160;
+    size_t bh = 1;
     size_t gw = (num_cols + bw - 1) / bw;
     size_t gh = (num_rows + bh - 1) / bh;
     const dim3 block_sz(bw, bh, 1);
@@ -204,6 +204,17 @@ void d_ca_cross(unsigned char* d_img, float** d_cost, float **h_cost,
 	int sm_cols = bw + (usd) * 2;
 	int sm_sz = sm_cols * bh;
 	int sm_padding = usd;
+	
+	size_t bw_v = 1;
+    size_t bh_v = num_rows;
+    size_t gw_v = (num_cols + bw_v - 1) / bw_v;
+    size_t gh_v = (num_rows + bh_v - 1) / bh_v;
+    const dim3 block_sz_v(bw_v, bh_v, 1);
+    const dim3 grid_sz_v(gw_v, gh_v, 1);
+	
+	int sm_rows = bh_v + (usd) * 2;
+	int sm_sz_v = sm_rows * bw_v;
+	int sm_padding_v = usd;
 
     for (int d = 0; d < num_disp; ++d)
         h_acost[d] = d_acost_memory + (d * img_sz);
@@ -213,13 +224,13 @@ void d_ca_cross(unsigned char* d_img, float** d_cost, float **h_cost,
     ca_cross_hsum_kernel_2<<<grid_sz, block_sz, sizeof(float) * sm_sz>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols, sm_cols, sm_sz, sm_padding); 
     cudaDeviceSynchronize();
     
-    ca_cross_vsum_kernel<<<grid_sz, block_sz>>>(d_acost, d_cost, d_cross, num_disp, num_rows, num_cols); 
+    ca_cross_vsum_kernel_2<<<grid_sz_v, block_sz_v, sizeof(float) * sm_sz_v>>>(d_acost, d_cost, d_cross, num_disp, num_rows, num_cols, sm_rows, sm_sz_v, sm_padding_v); 
     cudaDeviceSynchronize();
     
-    ca_cross_vsum_kernel<<<grid_sz, block_sz>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols); 
+    ca_cross_vsum_kernel_2<<<grid_sz_v, block_sz_v, sizeof(float) * sm_sz_v>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols, sm_rows, sm_sz_v, sm_padding_v); 
     cudaDeviceSynchronize();
     
-    ca_cross_hsum_kernel_2<<<grid_sz, block_sz, sizeof(float) * sm_sz>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols, sm_cols, sm_sz, sm_padding); 
+    ca_cross_hsum_kernel_2<<<grid_sz, block_sz, sizeof(float) * sm_sz>>>(d_acost, d_cost, d_cross, num_disp, num_rows, num_cols, sm_cols, sm_sz, sm_padding); 
     cudaDeviceSynchronize();
     
     ///////////////////
@@ -308,25 +319,54 @@ void ca_cross(unsigned char* img, float** cost, float** acost,
 	int sm_cols = bw + (usd) * 2;
 	int sm_sz = sm_cols * bh;
 	int sm_padding = usd;
+	
+	size_t bw_v = 1;
+    size_t bh_v = num_rows / 2;
+    size_t gw_v = (num_cols + bw_v - 1) / bw_v;
+    size_t gh_v = (num_rows + bh_v - 1) / bh_v;
+    const dim3 block_sz_v(bw_v, bh_v, 1);
+    const dim3 grid_sz_v(gw_v, gh_v, 1);
+	
+	int sm_rows = bh_v + (usd) * 2;
+	int sm_sz_v = sm_rows * bw_v;
+	int sm_padding_v = usd;
 
+	/*	
+	startCudaTimer(&timer);
+    ca_cross_hsum_kernel<<<grid_sz, block_sz>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols); 
+    stopCudaTimer(&timer, "Cross Horizontal Sum");
+*/
 	startCudaTimer(&timer);
     ca_cross_hsum_kernel_2<<<grid_sz, block_sz, sizeof(float) * sm_sz>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols, sm_cols, sm_sz, sm_padding); 
     stopCudaTimer(&timer, "Cross Horizontal Sum #2");
     
-    startCudaTimer(&timer);
+	startCudaTimer(&timer);
+    ca_cross_vsum_kernel_2<<<grid_sz_v, block_sz_v, sizeof(float) * sm_sz_v>>>(d_acost, d_cost, d_cross, num_disp, num_rows, num_cols, sm_rows, sm_sz_v, sm_padding_v); 
+    stopCudaTimer(&timer, "Cross Vertical Sum #2");
+    
+	startCudaTimer(&timer);
+    ca_cross_vsum_kernel_2<<<grid_sz_v, block_sz_v, sizeof(float) * sm_sz_v>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols, sm_rows, sm_sz_v, sm_padding_v); 
+    stopCudaTimer(&timer, "Cross Vertical Sum #2");
+/*	
+	startCudaTimer(&timer);
     ca_cross_vsum_kernel<<<grid_sz, block_sz>>>(d_acost, d_cost, d_cross, num_disp, num_rows, num_cols); 
     stopCudaTimer(&timer, "Cross Vertical Sum");
     
-    
-    startCudaTimer(&timer);
+	startCudaTimer(&timer);
     ca_cross_vsum_kernel<<<grid_sz, block_sz>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols); 
     stopCudaTimer(&timer, "Cross Vertical Sum");
-    
+*/
+	/*
 	startCudaTimer(&timer);
-    ca_cross_hsum_kernel_2<<<grid_sz, block_sz, sizeof(float) * sm_sz>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols, sm_cols, sm_sz, sm_padding); 
+    ca_cross_hsum_kernel<<<grid_sz, block_sz>>>(d_acost, d_cost, d_cross, num_disp, num_rows, num_cols); 
+    stopCudaTimer(&timer, "Cross Horizontal Sum");
+*/	
+	startCudaTimer(&timer);
+    ca_cross_hsum_kernel_2<<<grid_sz, block_sz, sizeof(float) * sm_sz>>>(d_acost, d_cost, d_cross, num_disp, num_rows, num_cols, sm_cols, sm_sz, sm_padding); 
     stopCudaTimer(&timer, "Cross Horizontal Sum #2");
     
-    for (int d = 0; d < num_disp; ++d)
+	
+	for (int d = 0; d < num_disp; ++d)
     {
         checkCudaError(cudaMemcpy(acost[d], h_cost[d], sizeof(float) * num_cols * num_rows, cudaMemcpyDeviceToHost));
     }
