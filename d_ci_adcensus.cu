@@ -196,6 +196,12 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
     size_t gh = (num_rows + bh - 1) / bh;
     const dim3 block_sz(bw, bh, 1);
     const dim3 grid_sz(gw, gh, 1);
+	
+	int positive_disp = num_disp - zero_disp;
+	int padding_disp = positive_disp > zero_disp ? positive_disp : zero_disp - 1;
+	int sm_cols = bw + (padding_disp) * 2;
+	printf("sm_cols: %d\n", sm_cols);
+	int sm_sz = sm_cols * bh * elem_sz;
 
     ////////
     // AD //
@@ -220,14 +226,17 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
     checkCudaError(cudaMemcpy(d_ad_cost_l, h_ad_cost_l, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
     checkCudaError(cudaMemcpy(d_ad_cost_r, h_ad_cost_r, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
     
-    //
     startCudaTimer(&timer);
     ci_ad_kernel_2<<<grid_sz, block_sz>>>(d_img_l, d_img_r, d_ad_cost_l, d_ad_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz);
     stopCudaTimer(&timer, "Absolute Difference Kernel #2");
-    // Launch Kernel
+
     startCudaTimer(&timer);
     ci_ad_kernel_3<<<grid_sz, block_sz>>>(d_img_l, d_img_r, d_ad_cost_l, d_ad_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz);
     stopCudaTimer(&timer, "Absolute Difference Kernel #3");
+    
+	startCudaTimer(&timer);
+    ci_ad_kernel_4<<<grid_sz, block_sz, sizeof(unsigned char) * sm_sz * 2>>>(d_img_l, d_img_r, d_ad_cost_l, d_ad_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_cols, sm_sz, padding_disp);
+    stopCudaTimer(&timer, "Absolute Difference Kernel #4");
 
     ////////////
     // CENSUS //

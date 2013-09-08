@@ -8,7 +8,8 @@
 __global__ void ci_ad_kernel_4(unsigned char* img_l, unsigned char* img_r, 
                                 float** cost_l, float** cost_r,
                                 int num_disp, int zero_disp, 
-                                int num_rows, int num_cols, int elem_sz)
+                                int num_rows, int num_cols, int elem_sz,
+                                int sm_cols, int sm_sz, int sm_padding)
 {
     int gx = threadIdx.x + blockIdx.x * blockDim.x;
     int gy = threadIdx.y + blockIdx.y * blockDim.y;
@@ -16,27 +17,56 @@ __global__ void ci_ad_kernel_4(unsigned char* img_l, unsigned char* img_r,
     if ((gx > num_cols - 1) || (gy > num_rows - 1))
         return;
     
-    int gy_num_cols = gy * num_cols;
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
 
-    int l_idx = (gx + gy_num_cols) * elem_sz;
+    extern __shared__ unsigned char sm_img[];
+    unsigned char* sm_img_l = sm_img;
+    unsigned char* sm_img_r = sm_img + sm_sz;
+    
+    int ty_sm_cols_elem_sz = ty * sm_cols * elem_sz;
+    int gy_num_cols = gy * num_cols;
+    
+    // Load Shared Memory
+
+    int gsx_begin = max(gx - sm_padding, 0);
+
+    for (int gsx = gsx_begin, tsx = tx; tsx < sm_cols; gsx += blockDim.x, tsx += blockDim.x)
+    {
+        gsx = min(max(gsx, 0), num_cols - 1);
+        int sm_idx = (tsx + ty * sm_cols) * elem_sz;
+        int gm_idx = (gsx + gy_num_cols) * elem_sz;
+        
+        sm_img_l[sm_idx]     = img_l[gm_idx];
+        sm_img_l[sm_idx + 1] = img_l[gm_idx + 1];
+        sm_img_l[sm_idx + 2] = img_l[gm_idx + 2];
+        
+        sm_img_r[sm_idx]     = img_r[gm_idx];
+        sm_img_r[sm_idx + 1] = img_r[gm_idx + 1];
+        sm_img_r[sm_idx + 2] = img_r[gm_idx + 2];
+    }
+
+    __syncthreads();
+
+    int l_idx = (tx + sm_padding) * elem_sz + ty_sm_cols_elem_sz;
     for (int d = 0; d < num_disp; ++d)
     {
-        int r_offset = min(max(gx + (d - zero_disp), 0), num_cols - 1);
-        int r_idx = (r_offset + gy_num_cols) * elem_sz;
+        int r_offset = tx + sm_padding + (d - zero_disp); 
+        int r_idx = r_offset * elem_sz + ty_sm_cols_elem_sz;
 
-        float cost_1 = (float) abs(img_l[l_idx]     - img_r[r_idx]);
-        float cost_2 = (float) abs(img_l[l_idx + 1] - img_r[r_idx + 1]);
-        float cost_3 = (float) abs(img_l[l_idx + 2] - img_r[r_idx + 2]);
+        float cost_1 = (float) abs(sm_img_l[l_idx]     - sm_img_r[r_idx]);
+        float cost_2 = (float) abs(sm_img_l[l_idx + 1] - sm_img_r[r_idx + 1]);
+        float cost_3 = (float) abs(sm_img_l[l_idx + 2] - sm_img_r[r_idx + 2]);
 
         float cost_average = (cost_1 + cost_2 + cost_3) * 0.33333333333;
         cost_l[d][gx + gy_num_cols] = cost_average;
         
-        int l_offset = min(max(gx - (d - zero_disp), 0), num_cols - 1);
-        r_idx = (l_offset + gy_num_cols) * elem_sz;
+        int l_offset = tx + sm_padding - (d - zero_disp); 
+        r_idx = l_offset * elem_sz + ty_sm_cols_elem_sz;
 
-        cost_1 = (float) abs(img_r[l_idx]     - img_l[r_idx]);
-        cost_2 = (float) abs(img_r[l_idx + 1] - img_l[r_idx + 1]);
-        cost_3 = (float) abs(img_r[l_idx + 2] - img_l[r_idx + 2]);
+        cost_1 = (float) abs(sm_img_r[l_idx]     - sm_img_l[r_idx]);
+        cost_2 = (float) abs(sm_img_r[l_idx + 1] - sm_img_l[r_idx + 1]);
+        cost_3 = (float) abs(sm_img_r[l_idx + 2] - sm_img_l[r_idx + 2]);
 
         cost_average = (cost_1 + cost_2 + cost_3) * 0.33333333333;
         cost_r[d][gx + gy_num_cols] = cost_average;
