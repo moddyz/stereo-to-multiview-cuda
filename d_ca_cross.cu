@@ -203,7 +203,7 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
 }
 
 void d_ca_cross(unsigned char* d_img, float** d_cost, float **h_cost, 
-                float** d_acost, float** h_acost,
+                float** d_acost, float** h_acost, float *d_acost_memory,
                 float ucd, float lcd, int usd, int lsd,
                 int num_disp, int num_rows, int num_cols, int elem_sz)
 {
@@ -218,6 +218,10 @@ void d_ca_cross(unsigned char* d_img, float** d_cost, float **h_cost,
     const dim3 block_sz(bw, bh, 1);
     const dim3 grid_sz(gw, gh, 1);
     
+    size_t img_sz = num_rows * num_cols;
+    size_t imgelem_sz = img_sz * elem_sz;
+    size_t cost_sz = img_sz * num_disp;
+    
     //////////////////////// 
     // CROSS CONSTRUCTION //
     ////////////////////////
@@ -226,13 +230,15 @@ void d_ca_cross(unsigned char* d_img, float** d_cost, float **h_cost,
     checkCudaError(cudaMalloc(&d_cross, sizeof(unsigned char*) * CROSS_ARM_COUNT));
 
     unsigned char** h_cross = (unsigned char**) malloc(sizeof(unsigned char*) * CROSS_ARM_COUNT);
+
+    unsigned char* d_cross_memory;
+    checkCudaError(cudaMalloc(&d_cross_memory, sizeof(unsigned char) * img_sz * CROSS_ARM_COUNT));
     
     for (int i = 0; i < CROSS_ARM_COUNT; ++i)
-        checkCudaError(cudaMalloc(&h_cross[i], sizeof(unsigned char) * num_rows * num_cols));
+        h_cross[i] = d_cross_memory + (i * img_sz);
 
     checkCudaError(cudaMemcpy(d_cross, h_cross, sizeof(unsigned char*) * CROSS_ARM_COUNT, cudaMemcpyHostToDevice));
     
-    // Launch kernel
     ca_cross_construction_kernel<<<grid_sz, block_sz>>>(d_img, d_cross, ucd, lcd, usd, lsd, num_rows, num_cols, elem_sz);
     cudaDeviceSynchronize();
     
@@ -241,11 +247,10 @@ void d_ca_cross(unsigned char* d_img, float** d_cost, float **h_cost,
     ///////////////////////////
 
     for (int d = 0; d < num_disp; ++d)
-        checkCudaError(cudaMalloc(&h_acost[d], sizeof(float) * num_rows * num_cols));
+        h_acost[d] = d_acost_memory + (d * img_sz);
 
     checkCudaError(cudaMemcpy(d_acost, h_acost, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
     
-    // Launch Kernel
     ca_cross_hsum_kernel<<<grid_sz, block_sz>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols); 
     cudaDeviceSynchronize();
     
@@ -261,12 +266,9 @@ void d_ca_cross(unsigned char* d_img, float** d_cost, float **h_cost,
     ///////////////////
     // DE-ALLOCATION // 
     ///////////////////
-
+    
+    cudaFree(d_cross_memory);
     cudaFree(d_cross);
-    for (int i = 0; i < CROSS_ARM_COUNT; ++i)
-    {
-        cudaFree(h_cross[i]);
-    }
     free(h_cross);
 }
 

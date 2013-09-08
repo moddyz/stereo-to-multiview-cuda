@@ -6,7 +6,7 @@
 #include "cuda_utils.h"
 #include <math.h>
 
-__global__ void dibr_forward_warp_kernel(unsigned char* img_out, unsigned char* occl, 
+__global__ void dibr_forward_warp_kernel(unsigned char* img_out, 
                                          unsigned char* img_in, float* disp,
                                          float shift, int num_rows, int num_cols, int elem_sz)
 {
@@ -22,8 +22,6 @@ __global__ void dibr_forward_warp_kernel(unsigned char* img_out, unsigned char* 
     img_out[(sx + ty * num_cols) * elem_sz] = img_in[(tx + ty * num_cols) * elem_sz];
     img_out[(sx + ty * num_cols) * elem_sz + 1] = img_in[(tx + ty * num_cols) * elem_sz + 1];
     img_out[(sx + ty * num_cols) * elem_sz + 2] = img_in[(tx + ty * num_cols) * elem_sz + 2];
-    
-    occl[sx + ty * num_cols] = 1;
 }
 
 void d_dibr_dfm(unsigned char* d_img_out,
@@ -70,10 +68,10 @@ void d_dibr_dfm(unsigned char* d_img_out,
 
     dibr_occl_to_mask_kernel<<<grid_sz, block_sz>>>(d_mask_l, d_occl_l, num_rows, num_cols);
     
-    dibr_forward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_occl_l, d_img_in_l, d_disp_l, shift, num_rows, num_cols, elem_sz);  
+    dibr_forward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_img_in_l, d_disp_l, shift, num_rows, num_cols, elem_sz);  
     cudaDeviceSynchronize();
     
-    dibr_forward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_r, d_occl_r, d_img_in_r, d_disp_r, 1.0 - shift, num_rows, num_cols, elem_sz);  
+    dibr_forward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_r, d_img_in_r, d_disp_r, 1.0 - shift, num_rows, num_cols, elem_sz);  
     cudaDeviceSynchronize();
     
     mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_img_out_r, d_mask_l, num_rows, num_cols, elem_sz);  
@@ -161,11 +159,11 @@ void dibr_dfm(unsigned char* img_out,
     ///////////////////
     
     startCudaTimer(&timer);
-    dibr_forward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_occl_l, d_img_in_l, d_disp_l, shift, num_rows, num_cols, elem_sz);  
+    dibr_forward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_img_in_l, d_disp_l, shift, num_rows, num_cols, elem_sz);  
     stopCudaTimer(&timer, "DIBR Forward Map Kernel");
     
     startCudaTimer(&timer);
-    dibr_forward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_r, d_occl_r, d_img_in_r, d_disp_r, 1.0 - shift, num_rows, num_cols, elem_sz);  
+    dibr_forward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_r, d_img_in_r, d_disp_r, 1.0 - shift, num_rows, num_cols, elem_sz);  
     stopCudaTimer(&timer, "DIBR Forward Map Kernel");
     
     startCudaTimer(&timer);

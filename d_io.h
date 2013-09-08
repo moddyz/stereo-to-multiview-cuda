@@ -21,7 +21,7 @@
 #include <cuda_runtime_api.h>
 
 void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
-                  unsigned char** views, unsigned char* interlaced,
+                  unsigned char* interlaced,
                   int num_rows, int num_cols_sbs, int num_cols, 
                   int num_rows_out, int num_cols_out, int elem_sz,
                   int num_views, int angle,

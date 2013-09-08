@@ -24,7 +24,6 @@ typedef enum
 {
     DISPLAY_MODE_SBS,
     DISPLAY_MODE_DISPARITY,
-    DISPLAY_MODE_MULTIVIEW,
     DISPLAY_MODE_INTERLACED,
 } display_mode_e;
 
@@ -122,7 +121,6 @@ int main( int argc, char **argv)
     
     int display_mode = DISPLAY_MODE_SBS;
     int display_persp = 0;
-    int view_num = 0;
     
     namedWindow("Display");
     for (;;)
@@ -144,22 +142,13 @@ int main( int argc, char **argv)
         float* data_disp_l = (float*) mat_disp_l.data;
         float* data_disp_r = (float*) mat_disp_r.data;
         
-        std::vector<Mat> mat_views;
-        for (int v = 0; v < num_views; ++v)
-            mat_views.push_back(Mat::zeros(num_rows, num_cols, CV_8UC(3)));
-
-        unsigned char **data_views = (unsigned char **) malloc(sizeof(unsigned char *) * num_views);
-        
-        for (int v = 0; v < num_views; ++v)
-            data_views[v] = mat_views[v].data;
-
         Mat mat_interlaced = Mat::zeros(num_rows_out, num_cols_out, CV_8UC(3));
 
         unsigned char* data_interlaced = mat_interlaced.data;
        	
 		double startTime, endTime;
 		startTime = getCPUTime();
-        adcensus_stm(data_sbs, data_disp_l, data_disp_r, data_views, data_interlaced, num_rows, num_cols_sbs, num_cols, num_rows_out, num_cols_out, elem_sz, num_views, angle, num_disp, zero_disp, ad_coeff, census_coeff, ucd, lcd, usd, lsd);
+        adcensus_stm(data_sbs, data_disp_l, data_disp_r, data_interlaced, num_rows, num_cols_sbs, num_cols, num_rows_out, num_cols_out, elem_sz, num_views, angle, num_disp, zero_disp, ad_coeff, census_coeff, ucd, lcd, usd, lsd);
 		endTime = getCPUTime();
 
 		fprintf( stderr, "CPU time used = %1f\n", (endTime - startTime));
@@ -180,30 +169,19 @@ int main( int argc, char **argv)
                 printf("Showing Disparity\n");
                 break;
             case '3':
-                display_mode = DISPLAY_MODE_MULTIVIEW;
-                break;
-            case '4':
                 display_mode = DISPLAY_MODE_INTERLACED;
                 printf("Showing Interlaced\n");
                 break;
             case ']':
-                if (display_mode == DISPLAY_MODE_MULTIVIEW)
-                {
-                    view_num = min(view_num + 1, num_views - 1);
-                    printf("Showing View # %d\n", view_num + 1);
-                }
-                else if (display_mode == DISPLAY_MODE_DISPARITY)
+                if (display_mode == DISPLAY_MODE_DISPARITY)
                     display_persp = DISPLAY_PERSP_RIGHT;
                 break;
             case '[':
-                if (display_mode == DISPLAY_MODE_MULTIVIEW)
-                {
-                    view_num = max(view_num - 1, 0);
-                    printf("Showing View # %d\n", view_num + 1);
-                }
-                else if (display_mode == DISPLAY_MODE_DISPARITY)
+                if (display_mode == DISPLAY_MODE_DISPARITY)
                     display_persp = DISPLAY_PERSP_LEFT;
                 break;
+			case 'q':
+				return 0;
             default:
                 break;
         }
@@ -220,17 +198,12 @@ int main( int argc, char **argv)
                 else if (display_persp == DISPLAY_PERSP_RIGHT)
                     imshow("Display", mat_disp_r);
                 break;
-            case DISPLAY_MODE_MULTIVIEW:
-                imshow("Display", mat_views[view_num]);
-                break;
             case DISPLAY_MODE_INTERLACED:
                 imshow("Display", mat_interlaced);
                 break;
             default:
                 break;
         }
-
-        free(data_views);
     }
 
     return 0;

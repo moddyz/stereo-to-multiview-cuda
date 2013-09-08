@@ -9,17 +9,22 @@ __global__ void filter_bleed_1_kernel(unsigned char *img_out, unsigned char *img
                                       int radius, int kernel_sz,
                                       int num_rows, int num_cols);
 
-void d_filter_bleed_1(unsigned char *d_img_out, unsigned char *d_img_in,
-                    int radius,
-                    int num_rows, int num_cols);
-
-void filter_bleed_1(unsigned char *img_out, unsigned char *img_in,
-                    int radius,
-                    int num_rows, int num_cols);
-
 __global__ void filter_bilateral_1_kernel(float *img_out, float *img_in, float* kernel,
                                    int radius, float sigma_color, float sigma_spatial,
                                    int num_rows, int num_cols);
+
+__global__ void filter_gaussian_1F_kernel(float* img_out, float* img_in,
+                                       float *kernel,
+                                       float sigma_spatial, int radius,
+                                       int num_rows, int num_cols);
+
+void filter_gaussian_1F(float *img,
+                        int radius, float sigma_spatial,
+                        int num_rows, int num_cols);
+
+void d_filter_gaussian_1F(float *d_img,
+                          int radius, float sigma_spatial,
+                          int num_rows, int num_cols);
 
 void d_filter_bilateral_1(float *d_img,
                           int radius, float sigma_color, float sigma_spatial,
@@ -28,5 +33,13 @@ void d_filter_bilateral_1(float *d_img,
 void filter_bilateral_1(float *img,
                         int radius, float sigma_color, float sigma_spatial,
                         int num_rows, int num_cols);
+
+void d_filter_bleed_1(unsigned char *d_img,
+                      int radius,
+                      int num_rows, int num_cols);
+
+void filter_bleed_1(unsigned char *img,
+                    int radius,
+                    int num_rows, int num_cols);
 
 #endif

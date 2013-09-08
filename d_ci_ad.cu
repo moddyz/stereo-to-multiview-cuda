@@ -4,10 +4,10 @@
 #include "cuda_utils.h"
 #include <math.h>
 
-__global__ void ci_ad_kernel(unsigned char* img_l, unsigned char* img_r, 
-                             float** cost_l, float** cost_R, int num_disp, int zero_disp,
-                             int num_rows, int num_cols, int elem_sz,
-                             int sm_w, int sm_sz)
+__global__ void ci_ad_kernel_2(unsigned char* img_l, unsigned char* img_r, 
+                                float** cost_l, float** cost_r,
+                                int num_disp, int zero_disp, 
+                                int num_rows, int num_cols, int elem_sz)
 {
     int gx = threadIdx.x + blockIdx.x * blockDim.x;
     int gy = threadIdx.y + blockIdx.y * blockDim.y;
@@ -15,143 +15,61 @@ __global__ void ci_ad_kernel(unsigned char* img_l, unsigned char* img_r,
     if ((gx > num_cols - 1) || (gy > num_rows - 1))
         return;
     
-    int tx = threadIdx.x;
-    int ty = threadIdx.y;
-    
-    // Load Shared Memory
-    extern __shared__ unsigned char sm_img[];
-    unsigned char* sm_img_l = sm_img;
-    unsigned char* sm_img_r = &sm_img[sm_sz];
-    
-    int ty_smw = ty * sm_w * elem_sz;
-    int gy_numcols = gy * num_cols;
-
-    for (int gsx = gx - zero_disp + 1, tsx = tx; tsx < sm_w; gsx += blockDim.x, tsx += blockDim.x)
+    int l_idx = (gx + gy * num_cols) * elem_sz;
+    for (int d = 0; d < num_disp; ++d)
     {
-        int sidx = tsx * elem_sz + ty_smw;
-        int gidx = (min(max(gsx, 0), num_cols - 1) + gy_numcols) * elem_sz;
-        sm_img_l[sidx] = img_l[gidx];
-        sm_img_l[sidx + 1] = img_l[gidx + 1];
-        sm_img_l[sidx + 2] = img_l[gidx + 2];
+        int r_offset = min(max(gx + (d - zero_disp), 0), num_cols - 1);
+        int r_idx = (r_offset + gy * num_cols) * elem_sz;
+
+        float cost_1 = (float) abs(img_l[l_idx]     - img_r[r_idx]);
+        float cost_2 = (float) abs(img_l[l_idx + 1] - img_r[r_idx + 1]);
+        float cost_3 = (float) abs(img_l[l_idx + 2] - img_r[r_idx + 2]);
+
+        float cost_average = (cost_1 + cost_2 + cost_3) * 0.33333333333;
+        cost_l[d][gx + gy * num_cols] = cost_average;
         
-        sm_img_r[sidx] = img_r[gidx];
-        sm_img_r[sidx + 1] = img_r[gidx + 1];
-        sm_img_r[sidx + 2] = img_r[gidx + 2];
-    }
+        int l_offset = min(max(gx - (d - zero_disp), 0), num_cols - 1);
+        r_idx = (l_offset + gy * num_cols) * elem_sz;
 
-    __syncthreads();
+        cost_1 = (float) abs(img_r[l_idx]     - img_l[r_idx]);
+        cost_2 = (float) abs(img_r[l_idx + 1] - img_l[r_idx + 1]);
+        cost_3 = (float) abs(img_r[l_idx + 2] - img_l[r_idx + 2]);
 
-    for (int d = 0; d < num_disp; ++d)
-    {
-        int r_coord = tx - 1 + d; 
-        int ll = (tx + zero_disp - 1) * elem_sz + ty_smw;
-        int lr = r_coord * elem_sz + ty_smw;
-        float cost_b = abs(sm_img_l[ll] - sm_img_r[lr]);
-        float cost_g = abs(sm_img_l[ll + 1] - sm_img_r[lr + 1]);
-        float cost_r = abs(sm_img_l[ll + 2] - sm_img_r[lr + 2]);
-        float cost = (cost_b + cost_g + cost_r) * 0.33333333333333333;
-        cost_l[d][gx + gy_numcols] = cost;
-        int gr_coord = min(max(gx + (d - zero_disp), 0), num_cols - 1);
-        cost_R[d][gr_coord + gy_numcols] = cost;
+        cost_average = (cost_1 + cost_2 + cost_3) * 0.33333333333;
+        cost_r[d][gx + gy * num_cols] = cost_average;
     }
 }
 
-void d_ci_ad(unsigned char* d_img_l, unsigned char* d_img_r, 
-             float** d_cost_l, float** d_cost_r,
-             int num_disp, int zero_disp,
-             int num_rows, int num_cols, int elem_sz)
+__global__ void ci_ad_kernel(unsigned char* img_l, unsigned char* img_r, 
+                             float** cost, 
+                             int num_disp, int zero_disp, int dir,
+                             int num_rows, int num_cols, int elem_sz)
 {
-    cudaEventPair_t timer;
-	
-    // Setup Block & Grid Size
-    size_t bw = 32;
-    size_t bh = 32;
-    
-    size_t gw = (num_cols + bw - 1) / bw;
-    size_t gh = (num_rows + bh - 1) / bh;
-    
-    const dim3 block_sz(bw, bh, 1);
-    const dim3 grid_sz(gw, gh, 1);
+    int gx = threadIdx.x + blockIdx.x * blockDim.x;
+    int gy = threadIdx.y + blockIdx.y * blockDim.y;
 
-    int sm_w = bw + num_disp - 1;
-    int sm_sz = sm_w * bh * elem_sz;
+    if ((gx > num_cols - 1) || (gy > num_rows - 1))
+        return;
     
-    // Launch Kernel
-    startCudaTimer(&timer);
-    ci_ad_kernel<<<grid_sz, block_sz, 2 * sm_sz * sizeof(unsigned char)>>>(d_img_l, d_img_r, d_cost_l, d_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_w, sm_sz);
-    stopCudaTimer(&timer, "Cost Initialization - Absolute Difference Kernel");
-
-}
-
-void ci_ad(unsigned char* img_l, unsigned char* img_r, float** cost_l, float** cost_r, int num_disp, int zero_disp, int num_rows, int num_cols, int elem_sz)
-{
-    cudaEventPair_t timer;
-    
-    // Device Memory Allocation & Copy
-    unsigned char* d_img_l;
-    unsigned char* d_img_r;
-
-    checkCudaError(cudaMalloc(&d_img_l, sizeof(unsigned char) * num_rows * num_cols * elem_sz));
-    checkCudaError(cudaMemcpy(d_img_l, img_l, sizeof(unsigned char) * num_rows * num_cols * elem_sz, cudaMemcpyHostToDevice));
-
-    checkCudaError(cudaMalloc(&d_img_r, sizeof(unsigned char) * num_rows * num_cols * elem_sz));
-    checkCudaError(cudaMemcpy(d_img_r, img_r, sizeof(unsigned char) * num_rows * num_cols * elem_sz, cudaMemcpyHostToDevice));
-
-    // Device Cost Memory
-    float** d_cost_l;
-    float** d_cost_r;
-    
-    checkCudaError(cudaMalloc(&d_cost_l, sizeof(float*) * num_disp));
-    checkCudaError(cudaMalloc(&d_cost_r, sizeof(float*) * num_disp));
-    
-    float** h_cost_l = (float**) malloc(sizeof(float*) * num_disp);
-    float** h_cost_r = (float**) malloc(sizeof(float*) * num_disp);
-    
+    int l_idx = gx + gy * num_cols * elem_sz;
     for (int d = 0; d < num_disp; ++d)
     {
-        checkCudaError(cudaMalloc(&h_cost_l[d], sizeof(float) * num_rows * num_cols));
-        checkCudaError(cudaMalloc(&h_cost_r[d], sizeof(float) * num_rows * num_cols));
-    }
-    
-    checkCudaError(cudaMemcpy(d_cost_l, h_cost_l, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
-    checkCudaError(cudaMemcpy(d_cost_r, h_cost_r, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
+        int r_coord = min(max(gx + dir * (d - zero_disp), 0), num_cols - 1);
+        int r_idx = (r_coord + gy * num_cols) * elem_sz;
+        float l_cost = (float) img_l[l_idx];
+        float r_cost = (float) img_r[r_idx];
+        float cost_b = abs(l_cost - r_cost);
+        
+        l_cost = (float) img_l[l_idx + 1];
+        r_cost = (float) img_r[r_idx + 1];
+        float cost_g = abs(l_cost - r_cost);
+        
+        l_cost = (float) img_l[l_idx + 2];
+        r_cost = (float) img_r[r_idx + 2];
+        float cost_r = abs(l_cost - r_cost);
 
-	// Setup Block & Grid Size
-    size_t bw = 32;
-    size_t bh = 32;
-    
-    size_t gw = (num_cols + bw - 1) / bw;
-    size_t gh = (num_rows + bh - 1) / bh;
-    
-    const dim3 block_sz(bw, bh, 1);
-    const dim3 grid_sz(gw, gh, 1);
-
-    int sm_w = bw + num_disp - 1;
-    int sm_sz = sm_w * bh * elem_sz;
-
-    // Launch Kernel
-    startCudaTimer(&timer);
-    ci_ad_kernel<<<grid_sz, block_sz, 2 * sm_sz * sizeof(unsigned char)>>>(d_img_l, d_img_r, d_cost_l, d_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_w, sm_sz);
-    stopCudaTimer(&timer, "Cost Initialization - Absolute Difference Kernel");
-    
-    // Copy Device Data to Host
-    for (int d = 0; d < num_disp; ++d)
-    {
-        checkCudaError(cudaMemcpy(cost_l[d], h_cost_l[d], sizeof(float) * num_rows * num_cols, cudaMemcpyDeviceToHost));
-        checkCudaError(cudaMemcpy(cost_r[d], h_cost_r[d], sizeof(float) * num_rows * num_cols, cudaMemcpyDeviceToHost));
-    }
-
-    
-    // Deallocation
-    cudaFree(d_img_l);
-    cudaFree(d_img_r);
-    cudaFree(d_cost_l);
-    cudaFree(d_cost_r);
-    for (int d = 0; d < num_disp; ++d)
-    {
-        cudaFree(h_cost_l[d]);
-        cudaFree(h_cost_r[d]);
+        float cost_average = (cost_b + cost_g + cost_r) * 0.33333333333;
+        cost[d][gx + gy * num_cols] = cost_average;
     }
 }
-
 #endif

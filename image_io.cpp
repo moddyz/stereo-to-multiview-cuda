@@ -153,7 +153,7 @@ int main(int argc, char** argv)
     float** data_cost_r = (float**) malloc(sizeof(float*) * num_disp);
     
 	for (int d = 0; d < num_disp; ++d)
-        mat_cost_r.push_back(Mat::ones(num_rows, num_cols, CV_32F));
+        mat_cost_r.push_back(Mat::zeros(num_rows, num_cols, CV_32F));
     for (int d = 0; d < num_disp; ++d)
         data_cost_r[d] = (float*) mat_cost_r[d].data;
     
@@ -201,37 +201,29 @@ int main(int argc, char** argv)
 	filter_bilateral_1(data_disp_l, 7, 5, 10, num_rows, num_cols);
     filter_bilateral_1(data_disp_r, 7, 5, 10, num_rows, num_cols);
 	
-	
-	
 	//////////
     // DIBR //
     //////////
 
-    Mat mat_occl_raw_l = Mat::zeros(num_rows, num_cols, CV_8UC(1));
-    Mat mat_occl_raw_r = Mat::zeros(num_rows, num_cols, CV_8UC(1));
-    
-    unsigned char* data_occl_raw_l = mat_occl_raw_l.data;
-    unsigned char* data_occl_raw_r = mat_occl_raw_r.data;
-
-    dibr_occl(data_occl_raw_l, data_occl_raw_r, data_disp_l, data_disp_r, num_rows, num_cols);
-    
     Mat mat_occl_l = Mat::zeros(num_rows, num_cols, CV_8UC(1));
     Mat mat_occl_r = Mat::zeros(num_rows, num_cols, CV_8UC(1));
     
     unsigned char* data_occl_l = mat_occl_l.data;
     unsigned char* data_occl_r = mat_occl_r.data;
 
-    filter_bleed_1(data_occl_l, data_occl_raw_l, 1, num_rows, num_cols);
-    filter_bleed_1(data_occl_r, data_occl_raw_r, 1, num_rows, num_cols);
+    dibr_occl(data_occl_l, data_occl_r, data_disp_l, data_disp_r, num_rows, num_cols);
 
-	Mat mat_mask_l = Mat::zeros(num_rows, num_cols, CV_32FC1);
-	Mat mat_mask_r = Mat::zeros(num_rows, num_cols, CV_32FC1);
+    filter_bleed_1(data_occl_l, 1, num_rows, num_cols);
+    filter_bleed_1(data_occl_r, 1, num_rows, num_cols);
+
+	Mat mat_mask_l = Mat::zeros(num_rows, num_cols, CV_32F);
+	Mat mat_mask_r = Mat::zeros(num_rows, num_cols, CV_32F);
 	
 	float *data_mask_l = (float*) mat_mask_l.data;
 	float *data_mask_r = (float*) mat_mask_r.data;
 
 	dibr_occl_to_mask(data_mask_l, data_mask_r, data_occl_l, data_occl_r, num_rows, num_cols);
- 	
+
     std::vector<Mat> mat_views;
 	mat_views.push_back(mat_img_r);
     for (int v = 1; v < num_views - 1; ++v)

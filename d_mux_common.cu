@@ -14,14 +14,19 @@ __global__ void mux_merge_AB_kernel(unsigned char* img_b, unsigned char* img_a, 
         return;
     
     float val_mask = mask_a[tx + ty * num_cols];
+    //printf("%f ", val_mask);
     
     float clr_a_b = val_mask * (float) img_a[(tx + ty * num_cols) * elem_sz];
     float clr_a_g = val_mask * (float) img_a[(tx + ty * num_cols) * elem_sz + 1];
     float clr_a_r = val_mask * (float) img_a[(tx + ty * num_cols) * elem_sz + 2];
     
-    img_b[(tx + ty * num_cols) * elem_sz] = img_b[(tx + ty * num_cols) * elem_sz] + (unsigned char) clr_a_b;
-    img_b[(tx + ty * num_cols) * elem_sz + 1] = img_b[(tx + ty * num_cols) * elem_sz + 1] + (unsigned char) clr_a_g;
-    img_b[(tx + ty * num_cols) * elem_sz + 2] = img_b[(tx + ty * num_cols) * elem_sz + 2] + (unsigned char) clr_a_r;
+    float clr_b_b = (1.0f - val_mask) * (float) img_b[(tx + ty * num_cols) * elem_sz];
+    float clr_b_g = (1.0f - val_mask) * (float) img_b[(tx + ty * num_cols) * elem_sz + 1];
+    float clr_b_r = (1.0f - val_mask) * (float) img_b[(tx + ty * num_cols) * elem_sz + 2];
+    
+    img_b[(tx + ty * num_cols) * elem_sz] = (unsigned char) clr_b_b + (unsigned char) clr_a_b;
+    img_b[(tx + ty * num_cols) * elem_sz + 1] = (unsigned char) clr_b_g + (unsigned char) clr_a_g;
+    img_b[(tx + ty * num_cols) * elem_sz + 2] = (unsigned char) clr_b_r + (unsigned char) clr_a_r;
 }
 
 #endif

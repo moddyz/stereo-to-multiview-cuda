@@ -5,7 +5,7 @@
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 
-__global__ void dibr_forward_warp_kernel(unsigned char* img_out, unsigned char* occl, 
+__global__ void dibr_forward_warp_kernel(unsigned char* img_out, 
                                          unsigned char* img_in, float* disp,
                                          float shift, int num_rows, int num_cols, int elem_sz);
 

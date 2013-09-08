@@ -28,6 +28,7 @@ void d_dibr_dbm(unsigned char* d_img_out,
                 unsigned char* d_img_in_l, unsigned char* d_img_in_r, 
                 float* d_disp_l, float* d_disp_r,
                 unsigned char *d_occl_l, unsigned char *d_occl_r,
+                float* d_mask_l, float* d_mask_r,
                 float shift, int num_rows, int num_cols, int elem_sz)
 {
     /////////////////////// 
@@ -44,13 +45,10 @@ void d_dibr_dbm(unsigned char* d_img_out,
     //////////// 
     // KERNEL //
     ////////////
-    float *d_mask_l, *d_mask_r;
-
-    checkCudaError(cudaMalloc(&d_mask_l, sizeof(float) * num_rows * num_cols));
-    checkCudaError(cudaMalloc(&d_mask_r, sizeof(float) * num_rows * num_cols));
     
-    dibr_occl_to_mask_kernel<<<grid_sz, block_sz>>>(d_mask_l, d_occl_l, num_rows, num_cols);
-    dibr_occl_to_mask_kernel<<<grid_sz, block_sz>>>(d_mask_r, d_occl_r, num_rows, num_cols);
+    float * d_tempmask_r;
+    checkCudaError(cudaMalloc(&d_tempmask_r, sizeof(float) * num_rows * num_cols));
+    checkCudaError(cudaMemcpy(d_tempmask_r, d_mask_r, sizeof(float) * num_rows * num_cols, cudaMemcpyDeviceToDevice));
 
     unsigned char* d_img_out_r; 
     checkCudaError(cudaMalloc(&d_img_out_r, sizeof(unsigned char) * num_rows * num_cols * elem_sz));
@@ -62,15 +60,16 @@ void d_dibr_dbm(unsigned char* d_img_out,
     dibr_backward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_r, d_img_in_r, d_mask_l, d_disp_l, 1.0 - shift, num_rows, num_cols, elem_sz);
     cudaDeviceSynchronize();
     
-    op_invertnormf_kernel<<<grid_sz, block_sz>>>(d_mask_r, num_rows, num_cols);
+    op_invertnormf_kernel<<<grid_sz, block_sz>>>(d_tempmask_r, num_rows, num_cols);
     cudaDeviceSynchronize(); 
+    
+    d_filter_gaussian_1F(d_tempmask_r, 10, 15, num_rows, num_cols);
 
-    mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out, d_img_out_r, d_mask_r, num_rows, num_cols, elem_sz);  
+    mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out, d_img_out_r, d_tempmask_r, num_rows, num_cols, elem_sz);  
     cudaDeviceSynchronize(); 
 
     cudaFree(d_img_out_r);
-    cudaFree(d_mask_l);
-    cudaFree(d_mask_r);
+    cudaFree(d_tempmask_r);
 }
 
 
@@ -110,7 +109,8 @@ void dibr_dbm(unsigned char* img_out,
     checkCudaError(cudaMalloc(&d_mask_l, sizeof(float) * num_rows * num_cols));
     checkCudaError(cudaMalloc(&d_mask_r, sizeof(float) * num_rows * num_cols));
     
-    d_dibr_occl_to_mask(d_mask_l, d_mask_r, d_occl_l, d_occl_r, num_rows, num_cols);
+    checkCudaError(cudaMemcpy(d_mask_l, mask_l, sizeof(float) * num_rows * num_cols, cudaMemcpyHostToDevice));
+    checkCudaError(cudaMemcpy(d_mask_r, mask_r, sizeof(float) * num_rows * num_cols, cudaMemcpyHostToDevice));
     
     /////////////////////// 
     // MEMORY ALLOCATION //
@@ -144,28 +144,28 @@ void dibr_dbm(unsigned char* img_out,
     stopCudaTimer(&timer, "DIBR Backward Map Kernel");
     
     startCudaTimer(&timer);
-    dibr_backward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_r, d_img_in_r, d_mask_l, d_disp_l, 1.0 - shift, num_rows, num_cols, elem_sz);  
+    dibr_backward_warp_kernel<<<grid_sz, block_sz>>>(d_img_out_r, d_img_in_r, d_mask_l, d_disp_l, 1.0f - shift, num_rows, num_cols, elem_sz);  
     stopCudaTimer(&timer, "DIBR Backward Map Kernel");
     
     startCudaTimer(&timer);
     op_invertnormf_kernel<<<grid_sz, block_sz>>>(d_mask_r, num_rows, num_cols);
     stopCudaTimer(&timer, "OP Invert Normalized Float Map Kernel");
     
+    d_filter_gaussian_1F(d_mask_r, 10, 15, num_rows, num_cols);
+    
     startCudaTimer(&timer);
     mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_img_out_r, d_mask_r, num_rows, num_cols, elem_sz);  
     stopCudaTimer(&timer, "Merge Kernel");
     
-    startCudaTimer(&timer);
-    op_invertnormf_kernel<<<grid_sz, block_sz>>>(d_mask_r, num_rows, num_cols);
-    stopCudaTimer(&timer, "OP Invert Normalized Float Map Kernel");
+    //startCudaTimer(&timer);
+    //op_invertnormf_kernel<<<grid_sz, block_sz>>>(d_mask_r, num_rows, num_cols);
+    //stopCudaTimer(&timer, "OP Invert Normalized Float Map Kernel");
     ///////////////// 
     // MEMORY COPY //
     /////////////////
 
     checkCudaError(cudaMemcpy(img_out, d_img_out_l, sizeof(unsigned char) * num_rows * num_cols * elem_sz, cudaMemcpyDeviceToHost));
 
-    checkCudaError(cudaMemcpy(mask_l, d_mask_l, sizeof(float) * num_rows * num_cols, cudaMemcpyDeviceToHost));
-    checkCudaError(cudaMemcpy(mask_r, d_mask_r, sizeof(float) * num_rows * num_cols, cudaMemcpyDeviceToHost));
     /////////////////// 
     // DE-ALLOCATION //
     ///////////////////
