@@ -42,7 +42,7 @@ void d_ci_adcensus(unsigned char* d_img_l, unsigned char* d_img_r,
                  int num_rows, int num_cols, int elem_sz)
 {
     // Setup Block & Grid Size
-    size_t bw = 640;
+    size_t bw = 160;
     size_t bh = 1;
     size_t gw = (num_cols + bw - 1) / bw;
     size_t gh = (num_rows + bh - 1) / bh;
@@ -84,9 +84,6 @@ void d_ci_adcensus(unsigned char* d_img_l, unsigned char* d_img_r,
     checkCudaError(cudaMemcpy(d_ad_cost_l, h_ad_cost_l, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
     checkCudaError(cudaMemcpy(d_ad_cost_r, h_ad_cost_r, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
     
-    // Launch Kernel
-    ci_ad_kernel_4<<<grid_sz, block_sz, sizeof(unsigned char) * sm_ad_sz * 2>>>(d_img_l, d_img_r, d_ad_cost_l, d_ad_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_ad_cols, sm_ad_sz, padding_disp);
-
     ////////////
     // CENSUS //
     ////////////
@@ -97,6 +94,8 @@ void d_ci_adcensus(unsigned char* d_img_l, unsigned char* d_img_r,
 
     checkCudaError(cudaMalloc(&d_census_l, sizeof(unsigned long long) * imgelem_sz));
     checkCudaError(cudaMalloc(&d_census_r, sizeof(unsigned long long) * imgelem_sz));
+    
+	ci_ad_kernel_4<<<grid_sz, block_sz, sizeof(unsigned char) * sm_ad_sz * 2>>>(d_img_l, d_img_r, d_ad_cost_l, d_ad_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_ad_cols, sm_ad_sz, padding_disp);
 
     // Launch Census Transform Kernel
     tx_census_9x7_kernel<<<grid_sz, block_sz>>>(d_img_l, d_census_l, num_rows, num_cols, elem_sz);
@@ -193,7 +192,7 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
     checkCudaError(cudaMemcpy(d_img_r, img_r, sizeof(unsigned char) * num_rows * num_cols * elem_sz, cudaMemcpyHostToDevice));
     
     // Setup Block & Grid Size
-    size_t bw = 640;
+    size_t bw = 160;
     size_t bh = 1;
     size_t gw = (num_cols + bw - 1) / bw;
     size_t gh = (num_rows + bh - 1) / bh;
@@ -241,19 +240,20 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
 	int sm_census_padding_l = zero_disp - 1;
 	int sm_census_padding_r = num_disp - zero_disp;
 
-    // Device Memory Allocation & Copy
     unsigned long long* d_census_l;
     unsigned long long* d_census_r;
 
     checkCudaError(cudaMalloc(&d_census_l, sizeof(unsigned long long) * num_rows * num_cols * elem_sz));
     checkCudaError(cudaMalloc(&d_census_r, sizeof(unsigned long long) * num_rows * num_cols * elem_sz));
 
-    // Launch Census Transform Kernel
     startCudaTimer(&timer);
+    tx_census_9x7_kernel<<<grid_sz, block_sz>>>(d_img_l, d_census_l, num_rows, num_cols, elem_sz);
+    stopCudaTimer(&timer, "Census Transform Kernel");
+    
+	startCudaTimer(&timer);
     tx_census_9x7_kernel<<<grid_sz, block_sz>>>(d_img_r, d_census_r, num_rows, num_cols, elem_sz);
     stopCudaTimer(&timer, "Census Transform Kernel");
     
-    // Cost Initialization Device Cost Memory
     float** d_census_cost_l;
     float** d_census_cost_r;
     
@@ -274,10 +274,6 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
     
     checkCudaError(cudaMemcpy(d_census_cost_l, h_census_cost_l, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
     checkCudaError(cudaMemcpy(d_census_cost_r, h_census_cost_r, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
-	
-	startCudaTimer(&timer);
-    ci_census_kernel_2<<<grid_sz, block_sz>>>(d_census_l, d_census_r, d_census_cost_l, d_census_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz);
-    stopCudaTimer(&timer, "Census Cost Kernel #2");
 	
 	startCudaTimer(&timer);
     ci_census_kernel_3<<<grid_sz, block_sz, sizeof(unsigned long long) * sm_census_sz * 2>>>(d_census_l, d_census_r, d_census_cost_l, d_census_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_census_cols, sm_census_sz, sm_census_padding_l, sm_census_padding_r);
