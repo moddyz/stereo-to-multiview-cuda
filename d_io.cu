@@ -116,7 +116,6 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
     checkCudaError(cudaMemcpy(disp_l, d_disp_l, sizeof(float) * img_sz, cudaMemcpyDeviceToHost));
     checkCudaError(cudaMemcpy(disp_r, d_disp_r, sizeof(float) * img_sz, cudaMemcpyDeviceToHost));
      
-    
 	cudaFree(d_adcensus_cost_l);
     cudaFree(d_adcensus_cost_r);
     cudaFree(d_adcensus_cost_memory);
