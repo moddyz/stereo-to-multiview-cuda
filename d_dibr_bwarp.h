@@ -6,7 +6,7 @@
 #include <cuda_runtime_api.h>
 #include "d_dibr_fwarp.h"
 #include "d_dibr_occl.h"
-#include "d_filter.h"
+#include "d_filter_gaussian.h"
 #include "d_alu.h"
 #include "d_mux_common.h"
 

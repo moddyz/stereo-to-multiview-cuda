@@ -63,7 +63,7 @@ void d_dibr_dbm(unsigned char* d_img_out,
     op_invertnormf_kernel<<<grid_sz, block_sz>>>(d_tempmask_r, num_rows, num_cols);
     cudaDeviceSynchronize(); 
     
-    d_filter_gaussian_1F(d_tempmask_r, 10, 15, num_rows, num_cols);
+    d_filter_gaussian_1(d_tempmask_r, 10, 15, num_rows, num_cols);
 
     mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out, d_img_out_r, d_tempmask_r, num_rows, num_cols, elem_sz);  
     cudaDeviceSynchronize(); 
@@ -151,7 +151,7 @@ void dibr_dbm(unsigned char* img_out,
     op_invertnormf_kernel<<<grid_sz, block_sz>>>(d_mask_r, num_rows, num_cols);
     stopCudaTimer(&timer, "OP Invert Normalized Float Map Kernel");
     
-    d_filter_gaussian_1F(d_mask_r, 10, 15, num_rows, num_cols);
+    d_filter_gaussian_1(d_mask_r, 10, 15, num_rows, num_cols);
     
     startCudaTimer(&timer);
     mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_img_out_r, d_mask_r, num_rows, num_cols, elem_sz);  
