@@ -148,7 +148,7 @@ void dibr_dbm(unsigned char* img_out,
     op_invertnormf_kernel<<<grid_sz, block_sz>>>(d_mask_r, num_rows, num_cols);
     stopCudaTimer(&timer, "OP Invert Normalized Float Map Kernel");
     
-    d_filter_gaussian_1(d_mask_r, 10, 15, num_rows, num_cols);
+    d_filter_gaussian_1(d_mask_r, 7, 10, num_rows, num_cols);
     
     startCudaTimer(&timer);
     mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_img_out_r, d_mask_r, num_rows, num_cols, elem_sz);  

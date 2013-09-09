@@ -6,6 +6,7 @@
 #include "cuda_utils.h"
 #include <math.h>
 
+
 __global__ void ci_adcensus_kernel(float** ad_cost_l, float** ad_cost_r, 
                                    float** census_cost_l, float** census_cost_r,
                                    float** adcensus_cost_l, float** adcensus_cost_r,
@@ -23,11 +24,11 @@ __global__ void ci_adcensus_kernel(float** ad_cost_l, float** ad_cost_r,
 
     for (int d = 0; d < num_disp; ++d)
     {
-       float ad_comp_l = 1.0 - exp(-ad_cost_l[d][pdx]*inv_ad_coeff);
-       float census_comp_l = 1.0 - exp(-census_cost_l[d][pdx]*inv_census_coeff);
+       float ad_comp_l = 1.0 - __expf(-ad_cost_l[d][pdx]*inv_ad_coeff);
+       float census_comp_l = 1.0 - __expf(-census_cost_l[d][pdx]*inv_census_coeff);
        
-       float ad_comp_r = 1.0 - exp(-ad_cost_r[d][pdx]*inv_ad_coeff);
-       float census_comp_r = 1.0 - exp(-census_cost_r[d][pdx]*inv_census_coeff);
+       float ad_comp_r = 1.0 - __expf(-ad_cost_r[d][pdx]*inv_ad_coeff);
+       float census_comp_r = 1.0 - __expf(-census_cost_r[d][pdx]*inv_census_coeff);
        
        adcensus_cost_l[d][pdx] = ad_comp_l + census_comp_l;
        adcensus_cost_r[d][pdx] = ad_comp_r + census_comp_r;
@@ -95,7 +96,7 @@ void d_ci_adcensus(unsigned char* d_img_l, unsigned char* d_img_r,
     checkCudaError(cudaMalloc(&d_census_l, sizeof(unsigned long long) * imgelem_sz));
     checkCudaError(cudaMalloc(&d_census_r, sizeof(unsigned long long) * imgelem_sz));
     
-	ci_ad_kernel_4<<<grid_sz, block_sz, sizeof(unsigned char) * sm_ad_sz * 2>>>(d_img_l, d_img_r, d_ad_cost_l, d_ad_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_ad_cols, sm_ad_sz, padding_disp);
+	ci_ad_kernel_5<<<grid_sz, block_sz, sizeof(unsigned char) * sm_ad_sz * 2>>>(d_img_l, d_img_r, d_ad_cost_l, d_ad_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_ad_cols, sm_ad_sz, padding_disp);
 
     // Launch Census Transform Kernel
     tx_census_9x7_kernel<<<grid_sz, block_sz>>>(d_img_l, d_census_l, num_rows, num_cols, elem_sz);
@@ -130,7 +131,7 @@ void d_ci_adcensus(unsigned char* d_img_l, unsigned char* d_img_r,
     checkCudaError(cudaMemcpy(d_census_cost_l, h_census_cost_l, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
     checkCudaError(cudaMemcpy(d_census_cost_r, h_census_cost_r, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
     
-	ci_census_kernel_3<<<grid_sz, block_sz, sizeof(unsigned long long) * sm_census_sz * 2>>>(d_census_l, d_census_r, d_census_cost_l, d_census_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_census_cols, sm_census_sz, sm_census_padding_l, sm_census_padding_r);
+	ci_census_kernel_4<<<grid_sz, block_sz, sizeof(unsigned long long) * sm_census_sz * 2>>>(d_census_l, d_census_r, d_census_cost_l, d_census_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_census_cols, sm_census_sz, sm_census_padding_l, sm_census_padding_r);
 
     /////////////////
     // AD + CENSUS //
@@ -228,8 +229,8 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
     checkCudaError(cudaMemcpy(d_ad_cost_r, h_ad_cost_r, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
     
 	startCudaTimer(&timer);
-    ci_ad_kernel_4<<<grid_sz, block_sz, sizeof(unsigned char) * sm_ad_sz * 2>>>(d_img_l, d_img_r, d_ad_cost_l, d_ad_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_ad_cols, sm_ad_sz, padding_disp);
-    stopCudaTimer(&timer, "Absolute Difference Kernel #4");
+    ci_ad_kernel_5<<<grid_sz, block_sz, sizeof(unsigned char) * sm_ad_sz * 2>>>(d_img_l, d_img_r, d_ad_cost_l, d_ad_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_ad_cols, sm_ad_sz, padding_disp);
+    stopCudaTimer(&timer, "Absolute Difference Kernel #5");
 
     ////////////
     // CENSUS //
@@ -276,8 +277,8 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
     checkCudaError(cudaMemcpy(d_census_cost_r, h_census_cost_r, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
 	
 	startCudaTimer(&timer);
-    ci_census_kernel_3<<<grid_sz, block_sz, sizeof(unsigned long long) * sm_census_sz * 2>>>(d_census_l, d_census_r, d_census_cost_l, d_census_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_census_cols, sm_census_sz, sm_census_padding_l, sm_census_padding_r);
-    stopCudaTimer(&timer, "Census Cost Kernel #3");
+    ci_census_kernel_4<<<grid_sz, block_sz, sizeof(unsigned long long) * sm_census_sz * 2>>>(d_census_l, d_census_r, d_census_cost_l, d_census_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_census_cols, sm_census_sz, sm_census_padding_l, sm_census_padding_r);
+    stopCudaTimer(&timer, "Census Cost Kernel #4");
     
     /////////////////
     // AD + CENSUS //

@@ -47,6 +47,70 @@ __global__ void tx_census_9x7_kernel(unsigned char* img, unsigned long long* cen
 }
 
 // Left & Right Calculation into 1 Module
+__global__ void ci_census_kernel_4(unsigned long long *census_l, unsigned long long *census_r, 
+                                  float **cost_l, float **cost_r,
+                                  int num_disp, int zero_disp,
+                                  int num_rows, int num_cols, int elem_sz,
+                                  int sm_cols, int sm_sz, 
+                                  int sm_padding_l, int sm_padding_r)
+{
+    int gx = threadIdx.x + blockIdx.x * blockDim.x;
+    int gy = threadIdx.y + blockIdx.y * blockDim.y;
+    
+    if ((gx > num_cols - 1) || (gy > num_rows - 1))
+        return;
+
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+
+    extern __shared__ unsigned long long sm_census[];
+    unsigned long long* sm_census_l = sm_census;
+    unsigned long long* sm_census_r = sm_census + sm_sz;
+
+    int ty_sm_cols = ty * sm_cols;
+    int gy_num_cols = gy * num_cols;
+
+    // Load Shared Memory
+    for (int elem_offset = 0; elem_offset < elem_sz; ++elem_offset)
+    {
+        for (int gsx_l = gx - sm_padding_r, gsx_r = gx - sm_padding_l, tsx = tx; 
+             tsx < sm_cols; gsx_l += blockDim.x, gsx_r += blockDim.x, tsx += blockDim.x)
+        {
+            int sm_idx = tsx + ty_sm_cols;
+            int gm_idx_l = (min(max(gsx_l, 0), num_cols - 1) + gy_num_cols) * elem_sz + elem_offset;
+            int gm_idx_r = (min(max(gsx_r, 0), num_cols - 1) + gy_num_cols) * elem_sz + elem_offset;
+        
+            sm_census_l[sm_idx] = census_l[gm_idx_l];
+            sm_census_r[sm_idx] = census_r[gm_idx_r];
+        }
+        __syncthreads();
+
+        int l_idx = tx + sm_padding_r + ty_sm_cols;
+        int l_idx2 = tx + sm_padding_l + ty_sm_cols;
+        unsigned long long l1 = sm_census_l[l_idx];
+        unsigned long long r1 = sm_census_r[l_idx2];
+
+        for (int d = 0; d < num_disp; ++d)
+        {
+            int r_offset = tx + sm_padding_l + (d - zero_disp);
+            int r_idx = r_offset + ty_sm_cols;
+            int l_offset = tx + sm_padding_r - (d - zero_disp);
+            int r_idx2 = l_offset + ty_sm_cols;
+
+            unsigned long long r2 = sm_census_r[r_idx];
+            unsigned long long l2 = sm_census_l[r_idx2];
+            
+            float cost_hamming = (float) alu_hamdist_64(l1, r2);
+            cost_l[d][gx + gy_num_cols] += cost_hamming * 0.33333333333f;
+            
+            cost_hamming = (float) alu_hamdist_64(r1, l2);
+            cost_r[d][gx + gy_num_cols] += cost_hamming * 0.33333333333f;
+        }
+        __syncthreads();
+    }
+}
+
+// Left & Right Calculation into 1 Module
 __global__ void ci_census_kernel_3(unsigned long long *census_l, unsigned long long *census_r, 
                                   float **cost_l, float **cost_r,
                                   int num_disp, int zero_disp,

@@ -92,12 +92,12 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
     
     d_ca_cross(d_img_r, d_adcensus_cost_r, h_adcensus_cost_r, d_acost_r, h_acost_r, d_acost_memory + cost_sz, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
 
-    
     cudaFree(d_acost_l);
     cudaFree(d_acost_r);
     cudaFree(d_acost_memory);
     free(h_acost_l); 
     free(h_acost_r); 
+
     ///////////////////////////
     // DISPARITY COMPUTATION //
     ///////////////////////////

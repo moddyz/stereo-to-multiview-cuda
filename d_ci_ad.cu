@@ -5,7 +5,7 @@
 #include <math.h>
 
 // 4. Shared mem diverging from kernel 2.
-__global__ void ci_ad_kernel_4(unsigned char* img_l, unsigned char* img_r, 
+__global__ void ci_ad_kernel_5(unsigned char* img_l, unsigned char* img_r, 
                                 float** cost_l, float** cost_r,
                                 int num_disp, int zero_disp, 
                                 int num_rows, int num_cols, int elem_sz,
@@ -36,6 +36,95 @@ __global__ void ci_ad_kernel_4(unsigned char* img_l, unsigned char* img_r,
         int sm_idx = (tsx + ty * sm_cols) * elem_sz;
         int gm_idx = (min(max(gsx, 0), num_cols - 1) + gy_num_cols) * elem_sz;
         
+        unsigned char l1 = img_l[gm_idx];
+        unsigned char l2 = img_l[gm_idx + 1];
+        unsigned char l3 = img_l[gm_idx + 2];
+        
+        unsigned char r1 = img_r[gm_idx];
+        unsigned char r2 = img_r[gm_idx + 1];
+        unsigned char r3 = img_r[gm_idx + 2];
+
+        sm_img_l[sm_idx]     = l1; 
+        sm_img_l[sm_idx + 1] = l2; 
+        sm_img_l[sm_idx + 2] = l3; 
+        sm_img_r[sm_idx]     = r1; 
+        sm_img_r[sm_idx + 1] = r2; 
+        sm_img_r[sm_idx + 2] = r3;
+    }
+
+    __syncthreads();
+
+    int l_idx = (tx + sm_padding) * elem_sz + ty_sm_cols_elem_sz;
+
+    unsigned char l1_0 = sm_img_l[l_idx + 1];
+    unsigned char l2_0 = sm_img_l[l_idx + 2];
+    unsigned char l3_0 = sm_img_l[l_idx + 3];
+    unsigned char r1_0 = sm_img_r[l_idx + 1];
+    unsigned char r2_0 = sm_img_r[l_idx + 2];
+    unsigned char r3_0 = sm_img_r[l_idx + 3];
+    
+    for (int d = 0; d < num_disp; ++d)
+    {
+        int r_offset = tx + sm_padding + (d - zero_disp); 
+        int l_offset = tx + sm_padding - (d - zero_disp); 
+        
+        int r_idx = r_offset * elem_sz + ty_sm_cols_elem_sz;
+        int r_idx2 = l_offset * elem_sz + ty_sm_cols_elem_sz;
+
+        unsigned char r1_1 = sm_img_r[r_idx + 1];
+        unsigned char r2_1 = sm_img_r[r_idx + 2];
+        unsigned char r3_1 = sm_img_r[r_idx + 3];
+        unsigned char l1_1 = sm_img_l[r_idx2 + 1];
+        unsigned char l2_1 = sm_img_l[r_idx2 + 2];
+        unsigned char l3_1 = sm_img_l[r_idx2 + 3];
+
+        float cost_1_l = (float) abs(l1_0 - r1_1);
+        float cost_2_l = (float) abs(l2_0 - r2_1);
+        float cost_3_l = (float) abs(l3_0 - r3_1);
+        float cost_1_r = (float) abs(r1_0 - l1_1);
+        float cost_2_r = (float) abs(r2_0 - l2_1);
+        float cost_3_r = (float) abs(r3_0 - l3_1);
+
+        float cost_average = (cost_1_l + cost_2_l + cost_3_l) * 0.33333333333f;
+        cost_l[d][gx + gy_num_cols] = cost_average;
+
+        cost_average = (cost_1_r + cost_2_r + cost_3_r) * 0.33333333333f;
+        cost_r[d][gx + gy_num_cols] = cost_average;
+    }
+}
+        
+// 4. Shared mem diverging from kernel 2.
+__global__ void ci_ad_kernel_4(unsigned char* img_l, unsigned char* img_r, 
+                                float** cost_l, float** cost_r,
+                                int num_disp, int zero_disp, 
+                                int num_rows, int num_cols, int elem_sz,
+                                int sm_cols, int sm_sz, int sm_padding)
+{
+    int gx = threadIdx.x + blockIdx.x * blockDim.x;
+    int gy = threadIdx.y + blockIdx.y * blockDim.y;
+
+    if ((gx > num_cols - 1) || (gy > num_rows - 1))
+        return;
+    
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+
+    extern __shared__ unsigned char sm_img[];
+    unsigned char* sm_img_l = sm_img;
+    unsigned char* sm_img_r = sm_img + sm_sz;
+    
+    int ty_sm_cols_elem_sz = ty * sm_cols * elem_sz;
+    int gy_num_cols = gy * num_cols;
+    
+    // Load Shared Memory
+
+    int gsx_begin = gx - sm_padding;
+
+    for (int gsx = gsx_begin, tsx = tx; tsx < sm_cols; gsx += blockDim.x, tsx += blockDim.x)
+    {
+        int sm_idx = (tsx + ty * sm_cols) * elem_sz;
+        int gm_idx = (min(max(gsx, 0), num_cols - 1) + gy_num_cols) * elem_sz;
+
         sm_img_l[sm_idx]     = img_l[gm_idx];
         sm_img_l[sm_idx + 1] = img_l[gm_idx + 1];
         sm_img_l[sm_idx + 2] = img_l[gm_idx + 2];

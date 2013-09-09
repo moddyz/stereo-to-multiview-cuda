@@ -15,6 +15,259 @@ inline __device__ float gaussian1D(float x, float sigma)
     return __expf(exponent) / sqrt(2 * PI * variance);
 }
 
+inline __device__ float gaussian1D_REG(float x, float variance, float sqrt_pi_variance)
+{
+    float g1d = -(x*x)/(2*variance);
+    g1d = __expf(g1d);
+    g1d /= sqrt_pi_variance;
+    return g1d;
+}
+
+
+texture<float, 1, cudaReadModeElementType> tex;
+
+__global__ void filter_bilateral_1_kernel_5(float *img_out, float* kernel,
+                                            int radius, float sigma_color, float sigma_color_sqrt_pi,
+                                            int num_rows, int num_cols,
+                                            int sm_kernel_len, int sm_kernel_sz)
+{
+    int gx = threadIdx.x + blockIdx.x * blockDim.x;
+    int gy = threadIdx.y + blockIdx.y * blockDim.y;
+
+    if ((gx > num_cols - 1) || (gy > num_rows - 1))
+        return;
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+
+    extern __shared__ float sm_kernel[];
+
+    int sm_img_padding = radius;
+    
+    for (int gsy = gy - sm_img_padding, tsy = ty;
+         tsy < sm_kernel_len;
+         gsy += blockDim.y, tsy += blockDim.y)
+    {
+         for (int gsx = gx - sm_img_padding, tsx = tx; 
+              tsx < sm_kernel_len;
+              gsx += blockDim.x, tsx += blockDim.x)
+         {
+             int sm_idx = tsx + tsy * sm_kernel_len;
+             int gm_idx = min(max(gsx, 0), num_cols - 1) + min(max(gsy, 0), num_rows - 1) * num_cols;
+
+             sm_kernel[sm_idx] = kernel[gm_idx];
+         }
+    }
+    
+    int idx = gx + gy * num_cols;
+    float val_a = tex1Dfetch(tex, idx);
+
+    int kernel_width = radius * 2 + 1;
+    float norm = 0.0f;
+    float res = 0.0f;
+
+    for (int y = -radius; y <= radius; ++y)
+    {
+        for (int x = -radius; x <= radius; ++x)
+        {
+            int sx = gx + x;
+            int sy = gy + y;
+
+            if (sx < 0) sx = -sx;
+            if (sy < 0) sy = -sy;
+            if (sx > num_cols - 1) sx = num_cols - 1 - x;
+            if (sy > num_rows - 1) sy = num_rows - 1 - y;
+
+            float val_s = tex1Dfetch(tex, sx + sy * num_cols);
+
+            float val_gspatial = sm_kernel[(x + radius) + (y + radius) * kernel_width];
+            float val_gcolor = gaussian1D_REG(val_a - val_s, sigma_color, sigma_color_sqrt_pi);
+            float weight = val_gspatial * val_gcolor;
+            
+            norm = norm + weight;
+            res = res + (val_s * weight); 
+        }
+    }
+
+    res /= norm;
+
+    img_out[gx + gy * num_cols] = res;
+}
+__global__ void filter_bilateral_1_kernel_4(float *img_out, float* kernel,
+                                            int radius, float sigma_color, float sigma_color_sqrt_pi,
+                                            int num_rows, int num_cols)
+{
+    int gx = threadIdx.x + blockIdx.x * blockDim.x;
+    int gy = threadIdx.y + blockIdx.y * blockDim.y;
+
+    if ((gx > num_cols - 1) || (gy > num_rows - 1))
+        return;
+    
+    int idx = gx + gy * num_cols;
+    float val_a = tex1Dfetch(tex, idx);
+
+    int kernel_width = radius * 2 + 1;
+    float norm = 0.0f;
+    float res = 0.0f;
+
+    for (int y = -radius; y <= radius; ++y)
+    {
+        for (int x = -radius; x <= radius; ++x)
+        {
+            int sx = gx + x;
+            int sy = gy + y;
+
+            if (sx < 0) sx = -sx;
+            if (sy < 0) sy = -sy;
+            if (sx > num_cols - 1) sx = num_cols - 1 - x;
+            if (sy > num_rows - 1) sy = num_rows - 1 - y;
+
+            float val_s = tex1Dfetch(tex, sx + sy * num_cols);
+
+            float val_gspatial = kernel[(x + radius) + (y + radius) * kernel_width];
+            float val_gcolor = gaussian1D_REG(val_a - val_s, sigma_color, sigma_color_sqrt_pi);
+            float weight = val_gspatial * val_gcolor;
+            
+            norm = norm + weight;
+            res = res + (val_s * weight); 
+        }
+    }
+
+    res /= norm;
+
+    img_out[gx + gy * num_cols] = res;
+}
+
+void filter_bilateral_1_tex(float *img,
+                            int radius, float sigma_color, float sigma_spatial,
+                            int num_rows, int num_cols)
+{
+    cudaEventPair_t timer;
+	
+    // Setup Block & Grid Size
+    size_t bw = 32;
+    size_t bh = 32;
+    
+    size_t gw = (num_cols + bw - 1) / bw;
+    size_t gh = (num_rows + bh - 1) / bh;
+    
+    const dim3 block_sz(bw, bh, 1);
+    const dim3 grid_sz(gw, gh, 1);
+
+    int sm_kernel_len = 2 * radius + 1;
+    int sm_kernel_sz = sm_kernel_len * sm_kernel_len; 
+    
+    int kernel_sz = sm_kernel_sz; 
+    float* kernel = (float*) malloc(sizeof(float) * kernel_sz);
+    generateGaussianKernel(kernel, radius, sigma_spatial);
+    
+    // Device Memory Allocation & Copy
+    float* d_img_in;
+    float* d_img_out;
+
+    checkCudaError(cudaMalloc(&d_img_in, sizeof(float) * num_rows * num_cols));
+    checkCudaError(cudaMemcpy(d_img_in, img, sizeof(float) * num_rows * num_cols, cudaMemcpyHostToDevice));
+    cudaBindTexture(0, tex, d_img_in, sizeof(float) * num_rows * num_cols);
+
+    checkCudaError(cudaMalloc(&d_img_out, sizeof(float) * num_rows * num_cols));
+
+    float* d_kernel;
+    checkCudaError(cudaMalloc(&d_kernel, sizeof(float) * kernel_sz));
+    checkCudaError(cudaMemcpy(d_kernel, kernel, sizeof(float) * kernel_sz, cudaMemcpyHostToDevice));
+    
+    startCudaTimer(&timer);
+    filter_bilateral_1_kernel_5<<<grid_sz, block_sz, sizeof(float) * sm_kernel_sz>>>(d_img_out, d_kernel, radius, sigma_color, sqrt(2 * PI * sigma_color), num_rows, num_cols, sm_kernel_len, sm_kernel_sz);
+    stopCudaTimer(&timer, "Bilateral Filter (1 Component) Kernel #5");
+    
+    checkCudaError(cudaMemcpy(img, d_img_out, sizeof(float) * num_rows * num_cols, cudaMemcpyDeviceToHost));
+
+    free(kernel);
+    cudaFree(d_kernel);
+    cudaFree(d_img_out);
+    cudaFree(d_img_in);
+}
+
+
+__global__ void filter_bilateral_1_kernel_3(float *img_out, float *img_in, float* kernel,
+                                            int radius, 
+                                            float sigma_color, float sigma_color_sqrt_pi, float sigma_spatial,
+                                            int num_rows, int num_cols,
+                                            int sm_img_rows, int sm_img_cols, int sm_img_sz, int sm_img_padding,
+                                            int sm_kernel_len, int sm_kernel_sz)
+{
+    int gx = threadIdx.x + blockIdx.x * blockDim.x;
+    int gy = threadIdx.y + blockIdx.y * blockDim.y;
+
+    if ((gx > num_cols - 1) || (gy > num_rows - 1))
+        return;
+
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+
+    extern __shared__ float sm_memory[];
+    float* sm_img = sm_memory;
+    float* sm_kernel = sm_memory + sm_img_sz;
+    
+    // Populate Shared Memory IMG
+    for (int gsy = gy - sm_img_padding, tsy = ty;
+         tsy < sm_img_rows;
+         gsy += blockDim.y, tsy += blockDim.y)
+    {
+         for (int gsx = gx - sm_img_padding, tsx = tx; 
+              tsx < sm_img_cols;
+              gsx += blockDim.x, tsx += blockDim.x)
+         {
+             int sm_idx = tsx + tsy * sm_img_cols;
+             int gm_idx = min(max(gsx, 0), num_cols - 1) + min(max(gsy, 0), num_rows - 1) * num_cols;
+
+             sm_img[sm_idx] = img_in[gm_idx];
+         }
+    }
+
+    for (int gsy = gy - sm_img_padding, tsy = ty;
+         tsy < sm_kernel_len;
+         gsy += blockDim.y, tsy += blockDim.y)
+    {
+         for (int gsx = gx - sm_img_padding, tsx = tx; 
+              tsx < sm_kernel_len;
+              gsx += blockDim.x, tsx += blockDim.x)
+         {
+             int sm_idx = tsx + tsy * sm_kernel_len;
+             int gm_idx = min(max(gsx, 0), num_cols - 1) + min(max(gsy, 0), num_rows - 1) * num_cols;
+
+             sm_kernel[sm_idx] = kernel[gm_idx];
+         }
+    }
+
+    __syncthreads();
+
+    float val_a = sm_img[tx + sm_img_padding + (ty + sm_img_padding) * sm_img_cols];
+
+    int kernel_width = radius * 2 + 1;
+    float norm = 0.0f;
+    float res = 0.0f;
+
+    for (int y = -radius; y <= radius; ++y)
+    {
+        for (int x = -radius; x <= radius; ++x)
+        {
+            int sx = tx + sm_img_padding + x;
+            int sy = ty + sm_img_padding + y;
+
+            float val_s = sm_img[sx + sy * sm_img_cols];
+
+            float val_gspatial = sm_kernel[(x + radius) + (y + radius) * kernel_width];
+            float val_gcolor = gaussian1D_REG(val_a - val_s, sigma_color, sigma_color_sqrt_pi);
+            float weight = val_gspatial * val_gcolor;
+            
+            norm = norm + weight;
+            res = res + (val_s * weight); 
+        }
+    }
+
+    res /= norm;
+    img_out[gx + gy * num_cols] = res;
+}
+
 __global__ void filter_bilateral_1_kernel_2(float *img_out, float *img_in, float* kernel,
                                             int radius, float sigma_color, float sigma_spatial,
                                             int num_rows, int num_cols,
@@ -176,11 +429,8 @@ void d_filter_bilateral_1(float *d_img,
     float* d_kernel;
     checkCudaError(cudaMalloc(&d_kernel, sizeof(float) * kernel_sz));
     checkCudaError(cudaMemcpy(d_kernel, kernel, sizeof(float) * kernel_sz, cudaMemcpyHostToDevice));
-   /* 
-    filter_bilateral_1_kernel<<<grid_sz, block_sz>>>(d_img_out, d_img, d_kernel, radius, sigma_color, sigma_spatial, num_rows, num_cols);
-    cudaDeviceSynchronize(); 
-   */ 
-    filter_bilateral_1_kernel_2<<<grid_sz, block_sz, sizeof(float) * (sm_img_sz + sm_kernel_sz)>>>(d_img_out, d_img, d_kernel, radius, sigma_color, sigma_spatial, num_rows, num_cols, sm_img_rows, sm_img_cols, sm_img_sz, sm_img_padding, sm_kernel_len, sm_kernel_sz);
+    
+    filter_bilateral_1_kernel_3<<<grid_sz, block_sz, sizeof(float) * (sm_img_sz + sm_kernel_sz)>>>(d_img_out, d_img, d_kernel, radius, sigma_color, sqrt(2 * PI * sigma_color), sigma_spatial, num_rows, num_cols, sm_img_rows, sm_img_cols, sm_img_sz, sm_img_padding, sm_kernel_len, sm_kernel_sz);
     cudaDeviceSynchronize(); 
     
     checkCudaError(cudaMemcpy(d_img, d_img_out, sizeof(float) * num_rows * num_cols, cudaMemcpyDeviceToDevice));
@@ -232,8 +482,8 @@ void filter_bilateral_1(float *img,
     checkCudaError(cudaMemcpy(d_kernel, kernel, sizeof(float) * kernel_sz, cudaMemcpyHostToDevice));
     
     startCudaTimer(&timer);
-    filter_bilateral_1_kernel_2<<<grid_sz, block_sz, sizeof(float) * (sm_img_sz + sm_kernel_sz)>>>(d_img_out, d_img_in, d_kernel, radius, sigma_color, sigma_spatial, num_rows, num_cols, sm_img_rows, sm_img_cols, sm_img_sz, sm_img_padding, sm_kernel_len, sm_kernel_sz);
-    stopCudaTimer(&timer, "Bilateral Filter (1 Component) Kernel #2");
+    filter_bilateral_1_kernel_3<<<grid_sz, block_sz, sizeof(float) * (sm_img_sz + sm_kernel_sz)>>>(d_img_out, d_img_in, d_kernel, radius, sigma_color, sqrt(2 * PI * sigma_color), sigma_spatial, num_rows, num_cols, sm_img_rows, sm_img_cols, sm_img_sz, sm_img_padding, sm_kernel_len, sm_kernel_sz);
+    stopCudaTimer(&timer, "Bilateral Filter (1 Component) Kernel #3");
     
     checkCudaError(cudaMemcpy(img, d_img_out, sizeof(float) * num_rows * num_cols, cudaMemcpyDeviceToHost));
 
