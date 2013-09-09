@@ -7,6 +7,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv/cvaux.h>
 #include "d_filter.h"
+#include "d_filter_bilateral.h"
 #include "d_dibr_occl.h"
 #include "d_dibr_fwarp.h"
 #include "d_dibr_bwarp.h"

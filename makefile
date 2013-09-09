@@ -17,7 +17,7 @@ GCC_OPTS =  -O3 -Wall -Wextra -m64
 NVCC=nvcc
 GCC=g++
 
-DEVICE_OBJECTS = d_io.o d_alu.o d_ci_census.o d_ci_ad.o d_mux_multiview.o d_tx_scale.o d_ci_adcensus.o d_ca_cross_sum.o d_ca_cross.o d_dc_wta.o d_dibr_fwarp.o d_dibr_bwarp.o d_dibr_occl.o d_mux_common.o d_dc_hslo.o d_demux_common.o d_filter.o d_op.o
+DEVICE_OBJECTS = d_io.o d_alu.o d_ci_census.o d_ci_ad.o d_mux_multiview.o d_tx_scale.o d_ci_adcensus.o d_ca_cross_sum.o d_ca_cross.o d_dc_wta.o d_dibr_fwarp.o d_dibr_bwarp.o d_dibr_occl.o d_mux_common.o d_dc_hslo.o d_demux_common.o d_filter.o d_filter_bilateral.o d_op.o
 DEVICE_LINK = device.o
 HOST_OBJECTS = getCPUtime.o
 
@@ -50,6 +50,9 @@ d_op.o: d_op.cu d_op.h cuda_utils.h
 
 d_filter.o: d_filter.cu d_filter.h cuda_utils.h
 	$(NVCC) -dc d_filter.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)
+
+d_filter_bilateral.o: d_filter_bilateral.cu d_filter_bilateral.h cuda_utils.h
+	$(NVCC) -dc d_filter_bilateral.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)
 
 d_io.o: d_io.cu d_io.h cuda_utils.h
 	$(NVCC) -dc d_io.cu $(NVCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH)
