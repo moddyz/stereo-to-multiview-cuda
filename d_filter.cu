@@ -1,7 +1,10 @@
-#ifndef D_FILTER_BLEED_KERNEL
-#define D_FILTER_BLEED_KERNEL
-#include "d_filter_bleed.h"
+#ifndef D_FILTER_KERNEL
+#define D_FILTER_KERNEL
+#include "d_filter.h"
+#include "cuda_utils.h"
+#include <math.h>
 
+                                       
 __global__ void filter_bleed_1_kernel(unsigned char *img_out, unsigned char *img_in,
                                       int radius, int kernel_sz,
                                       int num_rows, int num_cols)
@@ -101,5 +104,6 @@ void filter_bleed_1(unsigned char *img,
     cudaFree(d_img_in);
     cudaFree(d_img_out);
 }
+
 
 #endif

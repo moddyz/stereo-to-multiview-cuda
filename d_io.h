@@ -11,9 +11,9 @@
 
 #include "cuda_utils.h"
 
-#include "d_filter_bilateral.h"
 #include "d_filter_gaussian.h"
-#include "d_filter_bleed.h"
+#include "d_filter_bilateral.h"
+#include "d_filter.h"
 #include "d_dibr_occl.h"
 #include "d_dibr_fwarp.h"
 #include "d_dibr_bwarp.h"

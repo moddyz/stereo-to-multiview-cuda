@@ -10,9 +10,7 @@
 
 #include "d_dibr_fwarp.h"
 #include "d_dibr_occl.h"
-#include "d_filter_bilateral.h"
 #include "d_filter_gaussian.h"
-#include "d_filter_bleed.h"
 #include "d_alu.h"
 #include "d_op.h"
 #include "d_mux_common.h"
