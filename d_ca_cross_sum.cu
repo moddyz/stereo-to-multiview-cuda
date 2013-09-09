@@ -93,13 +93,16 @@ __global__ void ca_cross_vsum_kernel_2(float** cost, float** acost, unsigned cha
     extern __shared__ float sm_cost_mem[];
     float* sm_cost = sm_cost_mem;
 
-    int arm_u = (int) cross[CROSS_ARM_UP][gx + gy * num_cols];
-    int arm_d = (int) cross[CROSS_ARM_DOWN][gx + gy * num_cols];
+    int gy_num_cols = gy * num_cols;
+    int tx_num_rows = tx * num_rows;
+
+    int arm_u = (int) cross[CROSS_ARM_UP][gx + gy_num_cols];
+    int arm_d = (int) cross[CROSS_ARM_DOWN][gx + gy_num_cols];
     for (int d = 0; d < num_disp; ++d)
     {
         for (int gsy = gy - sm_padding, tsy = ty; tsy < sm_rows; gsy += blockDim.y, tsy += blockDim.y)
         {
-            int sm_idx = tsy + tx * num_rows;
+            int sm_idx = tsy + tx_num_rows;
             int gm_idx = min(max(gsy, 0), num_rows - 1) * num_cols + gx;
 
             sm_cost[sm_idx] = cost[d][gm_idx];
@@ -110,9 +113,10 @@ __global__ void ca_cross_vsum_kernel_2(float** cost, float** acost, unsigned cha
         float asum = 0;
         for (int ay = ty + sm_padding - arm_u; ay < ty + sm_padding + arm_d; ++ay)
         {
-            asum = asum + sm_cost[ay + tx * num_rows];
+            asum = asum + sm_cost[ay + tx_num_rows];
         }
-        acost[d][gx + gy * num_cols] = asum;
+        
+        acost[d][gx + gy_num_cols] = asum;
 
         __syncthreads();
     }

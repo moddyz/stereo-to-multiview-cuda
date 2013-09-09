@@ -6,7 +6,12 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv/cvaux.h>
-#include "d_filter.h"
+
+#include "cuda_utils.h"
+
+#include "d_filter_bilateral.h"
+#include "d_filter_gaussian.h"
+#include "d_filter_bleed.h"
 #include "d_dibr_occl.h"
 #include "d_dibr_fwarp.h"
 #include "d_dibr_bwarp.h"
@@ -18,7 +23,6 @@
 #include "d_ci_ad.h"
 #include "d_tx_scale.h"
 #include "d_mux_multiview.h"
-#include "cuda_utils.h"
 
 using namespace cv;
 

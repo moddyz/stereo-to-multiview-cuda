@@ -3,12 +3,14 @@
 #include <stdlib.h>
 #include <ctime>
 #include <vector>
-#include "getCPUtime.h"
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv/cvaux.h>
+
 #include "cuda_utils.h"
+#include "getCPUtime.h"
+
 #include "d_io.h"
 
 using namespace cv;

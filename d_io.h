@@ -1,8 +1,19 @@
 #ifndef D_IO_H
 #define D_IO_H
+#include <stdio.h>
+#include <cuda.h>
+#include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
+#include <math.h>
 
-// User Sources
-#include "d_filter.h"
+#include <opencv2/core/core.hpp>
+#include <opencv2/opencv.hpp>
+
+#include "cuda_utils.h"
+
+#include "d_filter_bilateral.h"
+#include "d_filter_gaussian.h"
+#include "d_filter_bleed.h"
 #include "d_dibr_occl.h"
 #include "d_dibr_fwarp.h"
 #include "d_dibr_bwarp.h"
@@ -15,10 +26,6 @@
 #include "d_tx_scale.h"
 #include "d_mux_multiview.h"
 #include "d_demux_common.h"
-#include <stdio.h>
-#include <cuda.h>
-#include <cuda_runtime.h>
-#include <cuda_runtime_api.h>
 
 void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
                   unsigned char* interlaced,

@@ -18,15 +18,19 @@ __global__ void dc_wta_kernel(float** cost, float* disp,
     
     float lowest_cost = FLT_MAX;
 
+    int tx_ty_num_cols = tx + ty * num_cols;
+
+    float lowest_d = 0;
     for (int d = 0; d < num_disp; ++d)
     {
-       float current_cost = cost[d][tx + ty * num_cols];
+       float current_cost = cost[d][tx_ty_num_cols];
        if (lowest_cost > current_cost)
        {
            lowest_cost = current_cost;
-           disp[tx + ty * num_cols] = (float) (d - zero_disp);
+           lowest_d = d;
        }
     }
+    disp[tx_ty_num_cols] = (float) (lowest_d - zero_disp);
 }
 
 void d_dc_wta(float** d_cost, float* d_disp, 
@@ -37,8 +41,8 @@ void d_dc_wta(float** d_cost, float* d_disp,
     // DEVICE PARAMETERS //
     ///////////////////////
 
-    size_t bw = 32;
-    size_t bh = 32;
+    size_t bw = 640;
+    size_t bh = 1;
     size_t gw = (num_cols + bw - 1) / bw;
     size_t gh = (num_rows + bh - 1) / bh;
     const dim3 block_sz(bw, bh, 1);

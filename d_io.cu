@@ -1,10 +1,6 @@
 #ifndef D_IO_KERNEL 
 #define D_IO_KERNEL
-#include <opencv2/core/core.hpp>
-#include <opencv2/opencv.hpp>
 #include "d_io.h"
-#include "cuda_utils.h"
-#include <math.h>
 
 void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
                   unsigned char* interlaced,

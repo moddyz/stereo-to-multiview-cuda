@@ -4,10 +4,17 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
+#include <math.h>
+
+#include "cuda_utils.h"
+
 #include "d_dibr_fwarp.h"
 #include "d_dibr_occl.h"
-#include "d_filter.h"
+#include "d_filter_bilateral.h"
+#include "d_filter_gaussian.h"
+#include "d_filter_bleed.h"
 #include "d_alu.h"
+#include "d_op.h"
 #include "d_mux_common.h"
 
 __global__ void dibr_backward_warp_kernel(unsigned char* img_out, unsigned char* img_in,

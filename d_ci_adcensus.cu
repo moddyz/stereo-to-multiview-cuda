@@ -24,9 +24,9 @@ __global__ void ci_adcensus_kernel(float** ad_cost_l, float** ad_cost_r,
     for (int d = 0; d < num_disp; ++d)
     {
        float ad_comp_l = 1.0 - exp(-ad_cost_l[d][pdx]*inv_ad_coeff);
-       float ad_comp_r = 1.0 - exp(-ad_cost_r[d][pdx]*inv_ad_coeff);
-
        float census_comp_l = 1.0 - exp(-census_cost_l[d][pdx]*inv_census_coeff);
+       
+       float ad_comp_r = 1.0 - exp(-ad_cost_r[d][pdx]*inv_ad_coeff);
        float census_comp_r = 1.0 - exp(-census_cost_r[d][pdx]*inv_census_coeff);
        
        adcensus_cost_l[d][pdx] = ad_comp_l + census_comp_l;

@@ -206,7 +206,7 @@ void d_ca_cross(unsigned char* d_img, float** d_cost, float **h_cost,
 	int sm_padding = usd;
 	
 	size_t bw_v = 1;
-    size_t bh_v = num_rows;
+    size_t bh_v = num_rows / 2;
     size_t gw_v = (num_cols + bw_v - 1) / bw_v;
     size_t gh_v = (num_rows + bh_v - 1) / bh_v;
     const dim3 block_sz_v(bw_v, bh_v, 1);

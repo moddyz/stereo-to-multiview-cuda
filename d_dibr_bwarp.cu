@@ -1,9 +1,6 @@
 #ifndef D_DIBR_BWARP_KERNEL 
 #define D_DIBR_BWARP_KERNEL
 #include "d_dibr_bwarp.h"
-#include "d_op.h"
-#include "cuda_utils.h"
-#include <math.h>
 
 __global__ void dibr_backward_warp_kernel(unsigned char* img_out, unsigned char* img_in,
                                           float* mask, float *disp,
@@ -35,8 +32,8 @@ void d_dibr_dbm(unsigned char* d_img_out,
     // DEVICE PARAMETERS //
     ///////////////////////
     
-    size_t bw = 32;
-    size_t bh = 32;
+    size_t bw = 160;
+    size_t bh = 1;
     size_t gw = (num_cols + bw - 1) / bw;
     size_t gh = (num_rows + bh - 1) / bh;
     const dim3 block_sz(bw, bh, 1);
@@ -151,7 +148,7 @@ void dibr_dbm(unsigned char* img_out,
     op_invertnormf_kernel<<<grid_sz, block_sz>>>(d_mask_r, num_rows, num_cols);
     stopCudaTimer(&timer, "OP Invert Normalized Float Map Kernel");
     
-    d_filter_gaussian_1F(d_mask_r, 10, 15, num_rows, num_cols);
+    //d_filter_gaussian_1F(d_mask_r, 10, 15, num_rows, num_cols);
     
     startCudaTimer(&timer);
     mux_merge_AB_kernel<<<grid_sz, block_sz>>>(d_img_out_l, d_img_out_r, d_mask_r, num_rows, num_cols, elem_sz);  

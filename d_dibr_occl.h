@@ -4,6 +4,8 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
+#include "cuda_utils.h"
+#include <math.h>
 #include "d_mux_common.h"
 
 __global__ void dibr_occl_to_mask_kernel(float *mask, unsigned char *occl,

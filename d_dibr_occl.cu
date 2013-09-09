@@ -1,8 +1,6 @@
 #ifndef D_DIBR_OCCL_KERNEL 
 #define D_DIBR_OCCL_KERNEL
 #include "d_dibr_occl.h"
-#include "cuda_utils.h"
-#include <math.h>
 
 __global__ void dibr_smooth_mask_kernel(float *mask, float *disp,
                                         int num_rows, int num_cols)
