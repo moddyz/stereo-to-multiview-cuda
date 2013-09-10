@@ -14,7 +14,7 @@ extern __device__ int alu_hamdist_64(unsigned long long a, unsigned long long b)
     return dist;
 }
 
-extern __device__ unsigned int alu_bilinear_interp(unsigned char* data, int elem_sz, int elem_offset, float coord_x, float coord_y, int width, int height) 
+extern __device__ unsigned char alu_bilinear_interp(unsigned char* data, int elem_sz, int elem_offset, float coord_x, float coord_y, int width, int height) 
 {
     int coord_00_x = floor(coord_x);
     int coord_00_y = floor(coord_y);
@@ -36,10 +36,10 @@ extern __device__ unsigned int alu_bilinear_interp(unsigned char* data, int elem
     unsigned char val_10 = data[(coord_10_x + coord_10_y * width) * elem_sz + elem_offset];
     unsigned char val_11 = data[(coord_11_x + coord_11_y * width) * elem_sz + elem_offset];
 
-    float top = (float) val_00 * (1.0 - weight_x) + (float) val_01 * weight_x;
-    float bot = (float) val_10 * (1.0 - weight_x) + (float) val_11 * weight_x;
+    float top = (float) val_00 * (1.0f - weight_x) + (float) val_01 * weight_x;
+    float bot = (float) val_10 * (1.0f - weight_x) + (float) val_11 * weight_x;
     
-    return (unsigned char) (top * (1.0 - weight_y) + bot * weight_y);
+    return (unsigned char) (top * (1.0f - weight_y) + bot * weight_y);
 }
 
 

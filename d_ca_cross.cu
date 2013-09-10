@@ -206,7 +206,7 @@ void d_ca_cross(unsigned char* d_img, float** d_cost, float **h_cost,
 	int sm_padding = usd;
 	
 	size_t bw_v = 1;
-    size_t bh_v = num_rows / 2;
+    size_t bh_v = num_rows / 4;
     size_t gw_v = (num_cols + bw_v - 1) / bw_v;
     size_t gh_v = (num_rows + bh_v - 1) / bh_v;
     const dim3 block_sz_v(bw_v, bh_v, 1);
@@ -232,6 +232,7 @@ void d_ca_cross(unsigned char* d_img, float** d_cost, float **h_cost,
     
     ca_cross_hsum_kernel_2<<<grid_sz, block_sz, sizeof(float) * sm_sz>>>(d_acost, d_cost, d_cross, num_disp, num_rows, num_cols, sm_cols, sm_sz, sm_padding); 
     cudaDeviceSynchronize();
+    
     
     ///////////////////
     // DE-ALLOCATION // 

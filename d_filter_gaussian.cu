@@ -42,18 +42,17 @@ __global__ void filter_gaussian_1_kernel_1(float* img_out, float* img_in,
          }
     }
 
-    for (int gsy = gy - sm_img_padding, tsy = ty;
+    for (int tsy = ty;
          tsy < sm_kernel_len;
-         gsy += blockDim.y, tsy += blockDim.y)
+         tsy += blockDim.y)
     {
-         for (int gsx = gx - sm_img_padding, tsx = tx; 
+         for (int tsx = tx; 
               tsx < sm_kernel_len;
-              gsx += blockDim.x, tsx += blockDim.x)
+              tsx += blockDim.x)
          {
-             int sm_idx = tsx + tsy * sm_kernel_len;
-             int gm_idx = min(max(gsx, 0), num_cols - 1) + min(max(gsy, 0), num_rows - 1) * num_cols;
+             int idx = tsx + tsy * sm_kernel_len;
 
-             sm_kernel[sm_idx] = kernel[gm_idx];
+             sm_kernel[idx] = kernel[idx];
          }
     }
 
@@ -68,22 +67,18 @@ __global__ void filter_gaussian_1_kernel_1(float* img_out, float* img_in,
 
     for (int y = -radius; y <= radius; ++y)
     {
+        int sy = ty + sm_img_padding + y;
+        int sy_sm_img_cols = sy * sm_img_cols;
+        int y_radius_kernel_width = (y + radius) * kernel_width;
         for (int x = -radius; x <= radius; ++x)
         {
             int sx = tx + sm_img_padding + x;
-            int sy = ty + sm_img_padding + y;
 
-            if (sx < 0) sx = -sx;
-            if (sy < 0) sy = -sy;
-            if (sx > num_cols - 1) sx = num_cols - 1 - x;
-            if (sy > num_rows - 1) sy = num_rows - 1 - y;
-
-            float val_s = sm_img[sx + sy * sm_img_cols];
-            float weight = sm_kernel[(x + radius) + (y + radius) * kernel_width];
+            float val_s = sm_img[sx + sy_sm_img_cols];
+            float weight = sm_kernel[x + radius + y_radius_kernel_width];
             
             norm = norm + weight;
             res = res + (val_s * weight); 
-            
         }
     }
     if (val_a < res/norm)

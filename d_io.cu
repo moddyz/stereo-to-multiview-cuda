@@ -116,8 +116,8 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
     free(h_adcensus_cost_l); 
     free(h_adcensus_cost_r); 
     
-    d_filter_bilateral_1(d_disp_l, 7, 5, 10, num_rows, num_cols);
-    d_filter_bilateral_1(d_disp_r, 7, 5, 10, num_rows, num_cols);
+    d_filter_bilateral_1(d_disp_l, 7, 5, 10, num_rows, num_cols, num_disp);
+    d_filter_bilateral_1(d_disp_r, 7, 5, 10, num_rows, num_cols, num_disp);
 
     checkCudaError(cudaMemcpy(disp_l, d_disp_l, sizeof(float) * img_sz, cudaMemcpyDeviceToHost));
     checkCudaError(cudaMemcpy(disp_r, d_disp_r, sizeof(float) * img_sz, cudaMemcpyDeviceToHost));

@@ -41,8 +41,8 @@ void d_dc_wta(float** d_cost, float* d_disp,
     // DEVICE PARAMETERS //
     ///////////////////////
 
-    size_t bw = 640;
-    size_t bh = 1;
+    size_t bw = 32;
+    size_t bh = 32;
     size_t gw = (num_cols + bw - 1) / bw;
     size_t gh = (num_rows + bh - 1) / bh;
     const dim3 block_sz(bw, bh, 1);
