@@ -121,7 +121,7 @@ int main( int argc, char **argv)
     printf("Lower Spatial Delta:     %d\n", lsd);
     printf("\n");
     
-    int display_mode = DISPLAY_MODE_SBS;
+    int display_mode = DISPLAY_MODE_INTERLACED;
     int display_persp = 0;
     
     namedWindow("Display");

@@ -12,6 +12,33 @@ typedef enum
     CROSS_ARM_RIGHT
 } cross_arm_e;
 
+
+__global__ void cost_copy_kernel(float **cost, float** cost_t, 
+                                 int num_disp, int num_rows, int num_cols)
+{
+    int gx = threadIdx.x + blockIdx.x * blockDim.x;
+    int gy = threadIdx.y + blockIdx.y * blockDim.y;
+    
+    if ((gx > num_cols - 1) || (gy > num_rows - 1))
+        return;
+
+    for (int d = 0; d < num_disp; ++d)
+        cost_t[d][gx + gy * num_cols] = cost[d][gx + gy * num_cols];
+}
+
+__global__ void cost_transpose_kernel_2(float **cost, float** cost_t, 
+                                        int num_disp, int num_rows, int num_cols)
+{
+    int gx = threadIdx.x + blockIdx.x * blockDim.x;
+    int gy = threadIdx.y + blockIdx.y * blockDim.y;
+    
+    if ((gx > num_cols - 1) || (gy > num_rows - 1))
+        return;
+    
+    for (int d = 0; d < num_disp; ++d)
+        cost_t[d][gy + gx * num_rows] = cost[d][gx + gy * num_cols];
+}
+
 __global__ void cost_transpose_kernel(float **cost, float** cost_t, 
                                       int num_disp, int num_rows, int num_cols)
 {

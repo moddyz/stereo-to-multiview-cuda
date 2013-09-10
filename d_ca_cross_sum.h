@@ -5,6 +5,9 @@
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 
+__global__ void cost_copy_kernel(float **cost, float** cost_t, 
+                                 int num_disp, int num_rows, int num_cols);
+
 __global__ void cost_transpose_kernel(float **cost, float** cost_t, 
                                       int num_disp, int num_rows, int num_cols);
 
