@@ -8,6 +8,18 @@
 __global__ void cost_copy_kernel(float **cost, float** cost_t, 
                                  int num_disp, int num_rows, int num_cols);
 
+__global__ void cost_transpose_kernel_4(float **cost, float** cost_t, 
+                                        int num_disp, int num_rows, int num_cols,
+                                        int tile_width, int tile_height);
+
+__global__ void cost_transpose_kernel_3(float **cost, float** cost_t, 
+                                        int num_disp, int num_rows, int num_cols,
+                                        int tile_width, int tile_height);
+
+__global__ void cost_transpose_kernel_2(float **cost, float** cost_t, 
+                                        int num_disp, int num_rows, int num_cols,
+                                        int tile_width, int tile_height);
+
 __global__ void cost_transpose_kernel(float **cost, float** cost_t, 
                                       int num_disp, int num_rows, int num_cols);
 
