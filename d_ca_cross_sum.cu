@@ -52,7 +52,7 @@ __global__ void cost_transpose_kernel_4(float **cost, float** cost_t,
         y = blockIdx.x * tile_width + threadIdx.y;
         
         for (int j = 0; j < tile_width; j += blockDim.y)
-                cost_t[d][(y + j) * height + x] = sm_cost[tx] [ty + j];
+                cost_t[d][(y + j) * height + x] = sm_cost[tx][ty + j];
         __syncthreads();
     }
 }
@@ -188,6 +188,47 @@ __global__ void ca_cross_vhsum_kernel(float** cost, float** acost, unsigned char
     }
 }
 
+__global__ void ca_cross_hsum_kernel_3(float** cost, float** acost, unsigned char** cross,
+                                       int num_disp, int num_rows, int num_cols,
+                                       int sm_cols, int sm_sz, int sm_padding)
+{
+    int gx = threadIdx.x + blockIdx.x * blockDim.x;
+    int gy = threadIdx.y + blockIdx.y * blockDim.y;
+    
+    if ((gx > num_cols - 1) || (gy > num_rows - 1))
+        return;
+
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+
+    extern __shared__ float sm_cost[];
+    
+    int ty_sm_cols = ty * sm_cols;
+    int gy_num_cols = gy * num_cols;
+
+    int arm_l = (int) cross[CROSS_ARM_LEFT][gx + gy_num_cols];
+    int arm_r = (int) cross[CROSS_ARM_RIGHT][gx + gy_num_cols];
+    
+    for (int d = 0; d < num_disp; ++d)
+    {
+        for (int gsx = gx - sm_padding, tsx = tx; tsx < sm_cols; gsx += blockDim.x, tsx += blockDim.x)
+        {
+            int sm_idx = tsx + ty_sm_cols;
+            int gm_idx = min(max(gsx, 0), num_cols - 1) + gy_num_cols;
+
+            sm_cost[sm_idx] = cost[d][gm_idx];
+        }
+        __syncthreads();
+
+        float asum = 0;
+        for (int ax = tx - arm_l + sm_padding; ax < tx + arm_r + sm_padding; ++ax)
+            asum = asum + sm_cost[ax + ty_sm_cols];
+        
+        acost[d][gx + gy_num_cols] = asum;
+        __syncthreads();
+    }
+}
+
 __global__ void ca_cross_hsum_kernel_2(float** cost, float** acost, unsigned char** cross,
                                        int num_disp, int num_rows, int num_cols,
                                        int sm_cols, int sm_sz, int sm_padding)
@@ -201,8 +242,7 @@ __global__ void ca_cross_hsum_kernel_2(float** cost, float** acost, unsigned cha
     int tx = threadIdx.x;
     int ty = threadIdx.y;
 
-    extern __shared__ float sm_cost_mem[];
-    float* sm_cost = sm_cost_mem;
+    extern __shared__ float sm_cost[];
     
     int ty_sm_cols = ty * sm_cols;
     int gy_num_cols = gy * num_cols;

@@ -41,7 +41,7 @@ inline void stopCudaTimer(cudaEventPair_t * p, char *message)
 
     float elapsedTime;
     cudaEventElapsedTime(&elapsedTime, p->start, p->end);
-    printf("[[ %s took: %.4f ms ]]\n\n", message, elapsedTime);
+    printf("[[ %s took: %.4f ms ]]\n", message, elapsedTime);
 
     cudaEventDestroy(p->start);
     cudaEventDestroy(p->end);

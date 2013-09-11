@@ -88,9 +88,9 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
     float* d_acost_memory;
     checkCudaError(cudaMalloc(&d_acost_memory, sizeof(float) * cost_sz * 2));
     
-    d_ca_cross(d_img_l, d_adcensus_cost_l, h_adcensus_cost_l, d_acost_l, h_acost_l, d_acost_memory, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
+    d_ca_cross(d_img_l, d_adcensus_cost_l, d_acost_l, h_acost_l, d_acost_memory, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
     
-    d_ca_cross(d_img_r, d_adcensus_cost_r, h_adcensus_cost_r, d_acost_r, h_acost_r, d_acost_memory + cost_sz, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
+    d_ca_cross(d_img_r, d_adcensus_cost_r, d_acost_r, h_acost_r, d_acost_memory + cost_sz, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
 
     cudaFree(d_acost_l);
     cudaFree(d_acost_r);
