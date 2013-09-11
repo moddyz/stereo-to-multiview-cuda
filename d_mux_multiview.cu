@@ -50,6 +50,8 @@ __global__ void mux_multiview_kernel_2(unsigned char** views, unsigned char* out
     for (int v = 0; v < num_views; ++v)
     {
         int tx = gx + v;
+        if (tx > num_cols_out) 
+            return;
         int ty = gy;
 
         float x_samp = fmin(fmax(((float) tx / (float) num_cols_out) * (float) num_cols_in, 0), (float) (num_cols_in - 1));
@@ -132,14 +134,11 @@ void d_mux_multiview( unsigned char **d_views, unsigned char* d_out_data,
     size_t gh = (num_rows_out + bh - 1) / bh;
     
     int kernel_num = 0;
-    if (num_rows_out % num_views == 0)
-    {
-        bw = num_cols_out / num_views;
-        bh = 1;
-        gw = (num_cols_out + bw - 1) / bw / num_views;
-        gh = (num_rows_out + bh - 1) / bh;
-        kernel_num = 1;
-    }
+    bw = num_cols_out / num_views;
+    bh = 1;
+    gw = (num_cols_out + bw - 1) / bw / num_views;
+    gh = (num_rows_out + bh - 1) / bh;
+    kernel_num = 1;
     
     const dim3 block_sz(bw, bh, 1);
     const dim3 grid_sz(gw, gh, 1);

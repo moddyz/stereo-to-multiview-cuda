@@ -173,7 +173,7 @@ void d_ca_cross(unsigned char* d_img, float** d_cost,
     // CROSS CONSTRUCTION //
     ////////////////////////
     
-    size_t bw = 640;
+    size_t bw = num_cols;
     size_t bh = 1;
     size_t gw = (num_cols + bw - 1) / bw;
     size_t gh = (num_rows + bh - 1) / bh;
@@ -226,7 +226,7 @@ void d_ca_cross(unsigned char* d_img, float** d_cost,
     int sm_width = 32;
     
     int ipt_s = 2;
-    size_t bw_s = 640 / ipt_s;
+    size_t bw_s = num_cols / ipt_s;
     size_t bh_s = 1;
     size_t gw_s = (num_cols + bw_s - 1) / bw_s / ipt_s;
     size_t gh_s = (num_rows + bh_s - 1) / bh_s;
@@ -239,7 +239,7 @@ void d_ca_cross(unsigned char* d_img, float** d_cost,
 	int sm_padding_s = 0;
     
     int ipt_s_v = 2;
-    size_t bw_s_v = 360 / ipt_s_v;
+    size_t bw_s_v = num_rows / ipt_s_v;
     size_t bh_s_v = 1;
     size_t gw_s_v = (num_rows + bw_s_v - 1) / bw_s_v / ipt_s_v;
     size_t gh_s_v = (num_cols + bh_s_v - 1) / bh_s_v;
@@ -290,7 +290,7 @@ void ca_cross(unsigned char* img, float** cost, float** acost,
     // DEVICE PARAMETERS //
     ///////////////////////
     
-    size_t bw = 640;
+    size_t bw = num_cols;
     size_t bh = 1;
     size_t gw = (num_cols + bw - 1) / bw;
     size_t gh = (num_rows + bh - 1) / bh;
@@ -374,7 +374,7 @@ void ca_cross(unsigned char* img, float** cost, float** acost,
     int sm_width= 32;
     
     int ipt_s = 2;
-    size_t bw_s = 640 / ipt_s;
+    size_t bw_s = num_cols / ipt_s;
     size_t bh_s = 1;
     size_t gw_s = (num_cols + bw_s - 1) / bw_s / ipt_s;
     size_t gh_s = (num_rows + bh_s - 1) / bh_s;

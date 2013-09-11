@@ -42,7 +42,7 @@ void d_dc_wta(float** d_cost, float* d_disp,
     // DEVICE PARAMETERS //
     ///////////////////////
 
-    size_t bw = 640;
+    size_t bw = num_cols;
     size_t bh = 1;
     size_t gw = (num_cols + bw - 1) / bw;
     size_t gh = (num_rows + bh - 1) / bh;
@@ -69,7 +69,7 @@ void dc_wta(float** cost, float* disp,
     // DEVICE PARAMETERS //
     ///////////////////////
 
-    size_t bw = 640;
+    size_t bw = num_cols;
     size_t bh = 1;
     size_t gw = (num_cols + bw - 1) / bw;
     size_t gh = (num_rows + bh - 1) / bh;
