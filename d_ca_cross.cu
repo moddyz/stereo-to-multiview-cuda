@@ -209,17 +209,6 @@ void d_ca_cross(unsigned char* d_img, float** d_cost,
 
     checkCudaError(cudaMemcpy(d_acost, h_acost, sizeof(float*) * num_disp, cudaMemcpyHostToDevice));
    	
-    size_t bw_v = 360;
-    size_t bh_v = 1;
-    size_t gw_v = (num_rows + bw_v - 1) / bw_v;
-    size_t gh_v = (num_cols + bh_v - 1) / bh_v;
-    const dim3 block_sz_v(bw_v, bh_v, 1);
-    const dim3 grid_sz_v(gw_v, gh_v, 1);
-	
-	int sm_cols_v = bw_v;
-	int sm_sz_v = sm_cols_v * bh_v;
-	int sm_padding_v = 0;
-    
 	size_t bw_t = 32;
     size_t bh_t = 8;
     size_t gw_t = (num_cols + bw_t - 1) / bw_t;
@@ -235,23 +224,50 @@ void d_ca_cross(unsigned char* d_img, float** d_cost,
     const dim3 grid_sz_t_v(gw_t_v, gh_t_v, 1);
 
     int sm_width = 32;
+    
+    int ipt_s = 2;
+    size_t bw_s = 640 / ipt_s;
+    size_t bh_s = 1;
+    size_t gw_s = (num_cols + bw_s - 1) / bw_s / ipt_s;
+    size_t gh_s = (num_rows + bh_s - 1) / bh_s;
+    const dim3 block_sz_s(bw_s, bh_s, 1);
+    const dim3 grid_sz_s(gw_s, gh_s, 1);
 	
-    ca_cross_hsum_kernel_2<<<grid_sz, block_sz, sizeof(float) * sm_sz>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols, sm_cols, sm_sz, sm_padding); 
+    int sm_cols_s = bw_s * ipt_s;
+    int sm_arm_s = 2 * ipt_s * bw_s;
+	int sm_sz_s = sm_cols_s + sm_arm_s +  1;
+	int sm_padding_s = 0;
+    
+    int ipt_s_v = 2;
+    size_t bw_s_v = 360 / ipt_s_v;
+    size_t bh_s_v = 1;
+    size_t gw_s_v = (num_rows + bw_s_v - 1) / bw_s_v / ipt_s_v;
+    size_t gh_s_v = (num_cols + bh_s_v - 1) / bh_s_v;
+    const dim3 block_sz_s_v(bw_s_v, bh_s_v, 1);
+    const dim3 grid_sz_s_v(gw_s_v, gh_s_v, 1);
+	
+    int sm_cols_s_v = bw_s_v * ipt_s_v;
+    int sm_arm_s_v = 2 * ipt_s_v * bw_s_v;
+	int sm_sz_s_v = sm_cols_s_v + sm_arm_s_v +  1;
+	int sm_padding_s_v = 0;
+
+	
+    ca_cross_hsum_kernel_3<<<grid_sz_s, block_sz_s, sizeof(float) * sm_sz_s>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols, sm_cols_s, sm_sz_s, sm_padding_s, ipt_s); 
 	cudaDeviceSynchronize();	
 
     cost_transpose_kernel_4<<<grid_sz_t, block_sz_t>>>(d_acost, d_cost, num_disp, num_rows, num_cols, sm_width, sm_width); 
 	cudaDeviceSynchronize();	
 	
-    ca_cross_vhsum_kernel<<<grid_sz_v, block_sz_v, sizeof(float) * sm_sz_v>>>(d_cost, d_acost, d_cross, num_disp, num_cols, num_rows, sm_cols_v, sm_sz_v, sm_padding_v); 
+    ca_cross_vhsum_kernel_2<<<grid_sz_s_v, block_sz_s_v, sizeof(float) * sm_sz_s_v>>>(d_cost, d_acost, d_cross, num_disp, num_cols, num_rows, sm_cols_s_v, sm_sz_s_v, sm_padding_s_v, ipt_s_v); 
 	cudaDeviceSynchronize();	
 	
-    ca_cross_vhsum_kernel<<<grid_sz_v, block_sz_v, sizeof(float) * sm_sz_v>>>(d_acost, d_cost, d_cross, num_disp, num_cols, num_rows, sm_cols_v, sm_sz_v, sm_padding_v); 
+    ca_cross_vhsum_kernel_2<<<grid_sz_s_v, block_sz_s_v, sizeof(float) * sm_sz_s_v>>>(d_acost, d_cost, d_cross, num_disp, num_cols, num_rows, sm_cols_s_v, sm_sz_s_v, sm_padding_s_v, ipt_s_v); 
 	cudaDeviceSynchronize();	
 	
     cost_transpose_kernel_4<<<grid_sz_t_v, block_sz_t_v>>>(d_cost, d_acost, num_disp, num_cols, num_rows, sm_width, sm_width); 
 	cudaDeviceSynchronize();	
 	
-    ca_cross_hsum_kernel_2<<<grid_sz, block_sz, sizeof(float) * sm_sz>>>(d_acost, d_cost, d_cross, num_disp, num_rows, num_cols, sm_cols, sm_sz, sm_padding); 
+    ca_cross_hsum_kernel_3<<<grid_sz_s, block_sz_s, sizeof(float) * sm_sz_s>>>(d_acost, d_cost, d_cross, num_disp, num_rows, num_cols, sm_cols_s, sm_sz_s, sm_padding_s, ipt_s); 
 	cudaDeviceSynchronize();	
     
     
@@ -341,17 +357,6 @@ void ca_cross(unsigned char* img, float** cost, float** acost,
 	int sm_sz = sm_cols * bh;
 	int sm_padding = usd;
     
-    size_t bw_v = 360;
-    size_t bh_v = 1;
-    size_t gw_v = (num_rows + bw_v - 1) / bw_v;
-    size_t gh_v = (num_cols + bh_v - 1) / bh_v;
-    const dim3 block_sz_v(bw_v, bh_v, 1);
-    const dim3 grid_sz_v(gw_v, gh_v, 1);
-	
-	int sm_cols_v = bw_v;
-	int sm_sz_v = sm_cols_v * bh_v;
-	int sm_padding_v = 0;
-    
 	size_t bw_t = 32;
     size_t bh_t = 8;
     size_t gw_t = (num_cols + bw_t - 1) / bw_t;
@@ -368,19 +373,35 @@ void ca_cross(unsigned char* img, float** cost, float** acost,
     
     int sm_width= 32;
     
-    size_t bw_s = 640;
+    int ipt_s = 2;
+    size_t bw_s = 640 / ipt_s;
     size_t bh_s = 1;
-    size_t gw_s = (num_cols + bw_s - 1) / bw_s;
+    size_t gw_s = (num_cols + bw_s - 1) / bw_s / ipt_s;
     size_t gh_s = (num_rows + bh_s - 1) / bh_s;
     const dim3 block_sz_s(bw_s, bh_s, 1);
     const dim3 grid_sz_s(gw_s, gh_s, 1);
 	
-    int sm_cols_s = bw;
-	int sm_sz_s = sm_cols_s + 2;
+    int sm_cols_s = bw_s * ipt_s;
+    int sm_arm_s = 2 * ipt_s * bw_s;
+	int sm_sz_s = sm_cols_s + sm_arm_s +  1;
 	int sm_padding_s = 0;
+    
+    int ipt_s_v = 2;
+    size_t bw_s_v = num_rows / ipt_s_v;
+    size_t bh_s_v = 1;
+    size_t gw_s_v = (num_rows + bw_s_v - 1) / bw_s_v / ipt_s_v;
+    size_t gh_s_v = (num_cols + bh_s_v - 1) / bh_s_v;
+    const dim3 block_sz_s_v(bw_s_v, bh_s_v, 1);
+    const dim3 grid_sz_s_v(gw_s_v, gh_s_v, 1);
+	
+    int sm_cols_s_v = bw_s_v * ipt_s_v;
+    int sm_arm_s_v = 2 * ipt_s_v * bw_s_v;
+	int sm_sz_s_v = sm_cols_s_v + sm_arm_s_v +  1;
+	int sm_padding_s_v = 0;
+
 	
 	startCudaTimer(&timer);
-    ca_cross_hsum_kernel_3<<<grid_sz_s, block_sz_s, sizeof(float) * sm_sz_s>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols, sm_cols_s, sm_sz_s, sm_padding_s); 
+    ca_cross_hsum_kernel_3<<<grid_sz_s, block_sz_s, sizeof(float) * sm_sz_s>>>(d_cost, d_acost, d_cross, num_disp, num_rows, num_cols, sm_cols_s, sm_sz_s, sm_padding_s, ipt_s); 
     stopCudaTimer(&timer, "Cross Horizontal Sum #3");
 
 	startCudaTimer(&timer);
@@ -388,11 +409,11 @@ void ca_cross(unsigned char* img, float** cost, float** acost,
     stopCudaTimer(&timer, "Cost Transpose Kernel #4");
 	
 	startCudaTimer(&timer);
-    ca_cross_vhsum_kernel<<<grid_sz_v, block_sz_v, sizeof(float) * sm_sz_v>>>(d_cost, d_acost, d_cross, num_disp, num_cols, num_rows, sm_cols_v, sm_sz_v, sm_padding_v); 
-    stopCudaTimer(&timer, "Cross Horizontal Transposed Sum Kernel");
+    ca_cross_vhsum_kernel_2<<<grid_sz_s_v, block_sz_s_v, sizeof(float) * sm_sz_s_v>>>(d_cost, d_acost, d_cross, num_disp, num_cols, num_rows, sm_cols_s_v, sm_sz_s_v, sm_padding_s_v, ipt_s_v); 
+    stopCudaTimer(&timer, "Cross Horizontal Transposed Sum Kernel #2");
 	
 	startCudaTimer(&timer);
-    ca_cross_vhsum_kernel<<<grid_sz_v, block_sz_v, sizeof(float) * sm_sz_v>>>(d_acost, d_cost, d_cross, num_disp, num_cols, num_rows, sm_cols_v, sm_sz_v, sm_padding_v); 
+    ca_cross_vhsum_kernel_2<<<grid_sz_s_v, block_sz_s_v, sizeof(float) * sm_sz_s_v>>>(d_acost, d_cost, d_cross, num_disp, num_cols, num_rows, sm_cols_s_v, sm_sz_s_v, sm_padding_s_v, ipt_s_v); 
     stopCudaTimer(&timer, "Cross Horizontal Transposed Sum Kernel");
 	
     startCudaTimer(&timer);

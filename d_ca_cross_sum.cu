@@ -145,6 +145,58 @@ __global__ void cost_transpose_kernel(float **cost, float** cost_t,
         cost_t[d][gy + gx * num_rows] = cost[d][gx + gy * num_cols];
 }
 
+__global__ void ca_cross_vhsum_kernel_2(float** cost, float** acost, unsigned char** cross,
+                                       int num_disp, int num_rows, int num_cols,
+                                       int sm_cols, int sm_sz, int sm_padding, 
+                                       int ipt)
+{
+    int gx = threadIdx.x + blockIdx.x * blockDim.x;
+    int gy = threadIdx.y + blockIdx.y * blockDim.y;
+    
+    if ((gx > num_cols - 1) || (gy > num_rows - 1))
+        return;
+
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+
+    extern __shared__ float sm_mem[];
+    float *sm_cost = sm_mem;
+    int *sm_arm_l = (int*) sm_cost + sm_cols;
+    int *sm_arm_r = sm_arm_l + blockDim.x * ipt;
+    
+    int ty_sm_cols = ty * sm_cols;
+    int gy_num_cols = gy * num_cols;
+    
+    for (int i = 0, x = tx; i < ipt; ++i, x += blockDim.x)
+    {
+        sm_arm_l[x] = (int) cross[CROSS_ARM_UP][gy + (gx + i * blockDim.x) * num_rows];
+        sm_arm_r[x] = (int) cross[CROSS_ARM_DOWN][gy + (gx + i * blockDim.x) * num_rows];
+    }
+
+    for (int d = 0; d < num_disp; ++d)
+    {
+        for (int gsx = gx - sm_padding, tsx = tx; tsx < sm_cols; gsx += blockDim.x, tsx += blockDim.x)
+        {
+            int sm_idx = tsx + ty_sm_cols;
+            int gm_idx = min(max(gsx, 0), num_cols - 1) + gy_num_cols;
+
+            sm_cost[sm_idx] = cost[d][gm_idx];
+        }
+        __syncthreads();
+         
+        for (int i = 0, x = tx; i < ipt; ++i, x += blockDim.x)
+        {
+            float asum = 0;
+            int bdi = blockDim.x * i;
+            for (int ax = tx + bdi - sm_arm_l[x] + sm_padding; ax < tx + bdi + sm_arm_r[x] + sm_padding; ++ax)
+                asum = asum + sm_cost[ax + ty_sm_cols];
+            
+            acost[d][gx + bdi + gy_num_cols] = asum;
+        }
+        __syncthreads();
+    }
+}
+
 __global__ void ca_cross_vhsum_kernel(float** cost, float** acost, unsigned char** cross,
                                        int num_disp, int num_rows, int num_cols,
                                        int sm_cols, int sm_sz, int sm_padding)
@@ -190,7 +242,8 @@ __global__ void ca_cross_vhsum_kernel(float** cost, float** acost, unsigned char
 
 __global__ void ca_cross_hsum_kernel_3(float** cost, float** acost, unsigned char** cross,
                                        int num_disp, int num_rows, int num_cols,
-                                       int sm_cols, int sm_sz, int sm_padding)
+                                       int sm_cols, int sm_sz, int sm_padding, 
+                                       int ipt)
 {
     int gx = threadIdx.x + blockIdx.x * blockDim.x;
     int gy = threadIdx.y + blockIdx.y * blockDim.y;
@@ -201,14 +254,20 @@ __global__ void ca_cross_hsum_kernel_3(float** cost, float** acost, unsigned cha
     int tx = threadIdx.x;
     int ty = threadIdx.y;
 
-    extern __shared__ float sm_cost[];
+    extern __shared__ float sm_mem[];
+    float *sm_cost = sm_mem;
+    int *sm_arm_l = (int*) sm_cost + sm_cols;
+    int *sm_arm_r = sm_arm_l + blockDim.x * ipt;
     
     int ty_sm_cols = ty * sm_cols;
     int gy_num_cols = gy * num_cols;
-
-    int arm_l = (int) cross[CROSS_ARM_LEFT][gx + gy_num_cols];
-    int arm_r = (int) cross[CROSS_ARM_RIGHT][gx + gy_num_cols];
     
+    for (int i = 0, x = tx; i < ipt; ++i, x += blockDim.x)
+    {
+        sm_arm_l[x] = (int) cross[CROSS_ARM_LEFT][gx + i * blockDim.x + gy_num_cols];
+        sm_arm_r[x] = (int) cross[CROSS_ARM_RIGHT][gx + i * blockDim.x + gy_num_cols];
+    }
+
     for (int d = 0; d < num_disp; ++d)
     {
         for (int gsx = gx - sm_padding, tsx = tx; tsx < sm_cols; gsx += blockDim.x, tsx += blockDim.x)
@@ -219,12 +278,16 @@ __global__ void ca_cross_hsum_kernel_3(float** cost, float** acost, unsigned cha
             sm_cost[sm_idx] = cost[d][gm_idx];
         }
         __syncthreads();
-
-        float asum = 0;
-        for (int ax = tx - arm_l + sm_padding; ax < tx + arm_r + sm_padding; ++ax)
-            asum = asum + sm_cost[ax + ty_sm_cols];
-        
-        acost[d][gx + gy_num_cols] = asum;
+         
+        for (int i = 0, x = tx; i < ipt; ++i, x += blockDim.x)
+        {
+            float asum = 0;
+            int bdi = blockDim.x * i;
+            for (int ax = tx + bdi - sm_arm_l[x] + sm_padding; ax < tx + bdi + sm_arm_r[x] + sm_padding; ++ax)
+                asum = asum + sm_cost[ax + ty_sm_cols];
+            
+            acost[d][gx + bdi + gy_num_cols] = asum;
+        }
         __syncthreads();
     }
 }
