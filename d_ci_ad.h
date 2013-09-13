@@ -5,6 +5,12 @@
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 
+__global__ void ci_ad_kernel_6(unsigned char* img_l, unsigned char* img_r, 
+                                float** cost_l, float** cost_r,
+                                int num_disp, int zero_disp, 
+                                int num_rows, int num_cols,
+                                int sm_cols, int sm_sz, int sm_padding);
+
 __global__ void ci_ad_kernel_5(unsigned char* img_l, unsigned char* img_r, 
                                 float** cost_l, float** cost_r,
                                 int num_disp, int zero_disp, 

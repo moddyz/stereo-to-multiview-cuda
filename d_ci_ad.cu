@@ -4,6 +4,71 @@
 #include "cuda_utils.h"
 #include <math.h>
 
+// 6.
+__global__ void ci_ad_kernel_6(unsigned char* img_l, unsigned char* img_r, 
+                                float** cost_l, float** cost_r,
+                                int num_disp, int zero_disp, 
+                                int num_rows, int num_cols,
+                                int sm_cols, int sm_sz, int sm_padding)
+{
+    int gx = threadIdx.x + blockIdx.x * blockDim.x;
+    int gy = threadIdx.y + blockIdx.y * blockDim.y;
+
+    if ((gx > num_cols - 1) || (gy > num_rows - 1))
+        return;
+    
+    int tx = threadIdx.x;
+    int ty = threadIdx.y;
+
+    extern __shared__ unsigned char sm_img[];
+    unsigned char* sm_img_l = sm_img;
+    unsigned char* sm_img_r = sm_img + sm_sz;
+    
+    int ty_sm_cols = ty * sm_cols;
+    int gy_num_cols = gy * num_cols;
+    
+    // Load Shared Memory
+
+    int gsx_begin = gx - sm_padding;
+
+    for (int gsx = gsx_begin, tsx = tx; tsx < sm_cols; gsx += blockDim.x, tsx += blockDim.x)
+    {
+        int sm_idx = tsx + ty_sm_cols;
+        int gm_idx = min(max(gsx, 0), num_cols - 1) + gy_num_cols;
+        
+        unsigned char l1 = img_l[gm_idx];
+        unsigned char r1 = img_r[gm_idx];
+
+        sm_img_l[sm_idx] = l1; 
+        sm_img_r[sm_idx] = r1; 
+    }
+
+    __syncthreads();
+
+    int l_idx = (tx + sm_padding) + ty_sm_cols;
+
+    unsigned char l1_0 = sm_img_l[l_idx + 1];
+    unsigned char r1_0 = sm_img_r[l_idx + 1];
+    
+    for (int d = 0; d < num_disp; ++d)
+    {
+        int r_offset = tx + sm_padding + (d - zero_disp); 
+        int l_offset = tx + sm_padding - (d - zero_disp); 
+        
+        int r_idx = r_offset + ty_sm_cols;
+        int r_idx2 = l_offset + ty_sm_cols;
+
+        unsigned char r1_1 = sm_img_r[r_idx + 1];
+        unsigned char l1_1 = sm_img_l[r_idx2 + 1];
+
+        float cost_1_l = (float) abs(l1_0 - r1_1);
+        float cost_1_r = (float) abs(r1_0 - l1_1);
+
+        cost_l[d][gx + gy_num_cols] = cost_1_l;
+        cost_r[d][gx + gy_num_cols] = cost_1_r;
+    }
+}
+
 // 4. Shared mem diverging from kernel 2.
 __global__ void ci_ad_kernel_5(unsigned char* img_l, unsigned char* img_r, 
                                 float** cost_l, float** cost_r,

@@ -103,8 +103,8 @@ void d_ci_adcensus(unsigned char* d_img_l, unsigned char* d_img_r,
     unsigned long long* d_census_l;
     unsigned long long* d_census_r;
 
-    checkCudaError(cudaMalloc(&d_census_l, sizeof(unsigned long long) * imgelem_sz));
-    checkCudaError(cudaMalloc(&d_census_r, sizeof(unsigned long long) * imgelem_sz));
+    checkCudaError(cudaMalloc(&d_census_l, sizeof(unsigned long long) * img_sz));
+    checkCudaError(cudaMalloc(&d_census_r, sizeof(unsigned long long) * img_sz));
     
 	ci_ad_kernel_5<<<grid_sz, block_sz, sizeof(unsigned char) * sm_ad_sz * 2>>>(d_img_l, d_img_r, d_ad_cost_l, d_ad_cost_r, num_disp, zero_disp, num_rows, num_cols, elem_sz, sm_ad_cols, sm_ad_sz, padding_disp);
 
@@ -348,6 +348,8 @@ void ci_adcensus(unsigned char* img_l, unsigned char* img_r, float** cost_l, flo
     // Device De-allocation
     cudaFree(d_img_l);
     cudaFree(d_img_r);
+    cudaFree(d_aimg_l);
+    cudaFree(d_aimg_r);
     cudaFree(d_census_l);
     cudaFree(d_census_r);
     cudaFree(d_ad_cost_l);

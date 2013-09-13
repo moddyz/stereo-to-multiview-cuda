@@ -70,8 +70,6 @@ __global__ void tx_census_9x7_kernel_2(unsigned char *img,
     unsigned int g2 = 0;
     unsigned int r2 = 0;
 
-    unsigned int mask = 0xFFFFFF;
-
     int gx_gy_num_cols_elem_sz = (gx + gy * num_cols) * elem_sz;
     
     for (int y = -win_h2; y <= win_h2; ++y)
@@ -248,10 +246,10 @@ __global__ void ci_census_kernel_6(unsigned long long *census_l, unsigned long l
         unsigned long long l2 = sm_census_l[r_idx2];
         
         float cost_hamming = (float) alu_hamdist_64(l1, r2);
-        cost_l[d][gx + gy_num_cols] += cost_hamming * 0.33333333333f;
+        cost_l[d][gx + gy_num_cols] = cost_hamming;
         
         cost_hamming = (float) alu_hamdist_64(r1, l2);
-        cost_r[d][gx + gy_num_cols] += cost_hamming * 0.33333333333f;
+        cost_r[d][gx + gy_num_cols] = cost_hamming;
     }
 }
 
