@@ -200,6 +200,11 @@ int main(int argc, char** argv)
     
     dc_wta(data_acost_l, data_disp_l, num_disp, zero_disp, num_rows, num_cols);
 	dc_wta(data_acost_r, data_disp_r, num_disp, zero_disp, num_rows, num_cols);
+
+    //////////////////////////
+    // DISPARITY REFINEMENT //
+    //////////////////////////
+
 	
 	filter_bilateral_1(data_disp_l, 7, 7, 7, num_rows, num_cols, num_disp);
     filter_bilateral_1(data_disp_r, 7, 7, 7, num_rows, num_cols, num_disp);

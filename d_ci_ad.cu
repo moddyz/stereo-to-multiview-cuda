@@ -121,12 +121,12 @@ __global__ void ci_ad_kernel_5(unsigned char* img_l, unsigned char* img_r,
 
     int l_idx = (tx + sm_padding) * elem_sz + ty_sm_cols_elem_sz;
 
-    unsigned char l1_0 = sm_img_l[l_idx + 1];
-    unsigned char l2_0 = sm_img_l[l_idx + 2];
-    unsigned char l3_0 = sm_img_l[l_idx + 3];
-    unsigned char r1_0 = sm_img_r[l_idx + 1];
-    unsigned char r2_0 = sm_img_r[l_idx + 2];
-    unsigned char r3_0 = sm_img_r[l_idx + 3];
+    unsigned char l1_0 = sm_img_l[l_idx];
+    unsigned char l2_0 = sm_img_l[l_idx + 1];
+    unsigned char l3_0 = sm_img_l[l_idx + 2];
+    unsigned char r1_0 = sm_img_r[l_idx];
+    unsigned char r2_0 = sm_img_r[l_idx + 1];
+    unsigned char r3_0 = sm_img_r[l_idx + 2];
     
     for (int d = 0; d < num_disp; ++d)
     {
@@ -136,12 +136,12 @@ __global__ void ci_ad_kernel_5(unsigned char* img_l, unsigned char* img_r,
         int r_idx = r_offset * elem_sz + ty_sm_cols_elem_sz;
         int r_idx2 = l_offset * elem_sz + ty_sm_cols_elem_sz;
 
-        unsigned char r1_1 = sm_img_r[r_idx + 1];
-        unsigned char r2_1 = sm_img_r[r_idx + 2];
-        unsigned char r3_1 = sm_img_r[r_idx + 3];
-        unsigned char l1_1 = sm_img_l[r_idx2 + 1];
-        unsigned char l2_1 = sm_img_l[r_idx2 + 2];
-        unsigned char l3_1 = sm_img_l[r_idx2 + 3];
+        unsigned char r1_1 = sm_img_r[r_idx];
+        unsigned char r2_1 = sm_img_r[r_idx + 1];
+        unsigned char r3_1 = sm_img_r[r_idx + 2];
+        unsigned char l1_1 = sm_img_l[r_idx2];
+        unsigned char l2_1 = sm_img_l[r_idx2 + 1];
+        unsigned char l3_1 = sm_img_l[r_idx2 + 2];
 
         float cost_1_l = (float) abs(l1_0 - r1_1);
         float cost_2_l = (float) abs(l2_0 - r2_1);
