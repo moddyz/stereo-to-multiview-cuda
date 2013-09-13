@@ -4,6 +4,7 @@
 #include <cuda.h>
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
+#include "d_mux_common.h"
 
 __global__ void ci_adcensus_kernel(float** ad_cost_l, float** ad_cost_r, 
                                    float** census_cost_l, float** census_cost_r,

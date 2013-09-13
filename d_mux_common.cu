@@ -4,6 +4,22 @@
 #include "cuda_utils.h"
 #include <math.h>
 
+__global__ void mux_average_kernel(unsigned char* img_out, unsigned char* img_in,
+                                   int num_rows, int num_cols, int elem_sz)
+{
+    int tx = threadIdx.x + blockIdx.x * blockDim.x;
+    int ty = threadIdx.y + blockIdx.y * blockDim.y;
+    
+    if ((tx > num_cols - 1) || (ty > num_rows - 1))
+        return;
+    
+    float clr_b = (float) img_in[(tx + ty * num_cols) * elem_sz] * 0.3333333333333f;
+    float clr_g = (float) img_in[(tx + ty * num_cols) * elem_sz + 1] * 0.333333333333f;
+    float clr_r = (float) img_in[(tx + ty * num_cols) * elem_sz + 2] * 0.333333333333f;
+
+    img_out[tx + ty * num_cols] = clr_b + clr_g + clr_r;
+}
+
 __global__ void mux_merge_AB_kernel(unsigned char* img_b, unsigned char* img_a, float* mask_a,
                                     int num_rows, int num_cols, int elem_sz)
 {
