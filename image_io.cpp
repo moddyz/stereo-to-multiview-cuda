@@ -24,6 +24,8 @@
 #include "d_tx_scale.h"
 #include "d_mux_multiview.h"
 
+#define CROSS_ARM_COUNT 4
+
 using namespace cv;
 
 typedef enum
@@ -166,6 +168,20 @@ int main(int argc, char** argv)
     //////////////////////
     // COST AGGRAGATION //
     //////////////////////
+
+	std::vector<Mat> mat_cross_l;
+	unsigned char ** data_cross_l = (unsigned char**) malloc(sizeof(unsigned char*) * CROSS_ARM_COUNT);
+	for (int a = 0; a < CROSS_ARM_COUNT; ++a)
+        mat_cross_l.push_back(Mat::zeros(num_rows, num_cols, CV_8UC(1)));
+	for (int a = 0; a < CROSS_ARM_COUNT; ++a)
+        data_cross_l[a] = mat_cross_l[a].data;
+
+	std::vector<Mat> mat_cross_r;
+	unsigned char ** data_cross_r = (unsigned char**) malloc(sizeof(unsigned char*) * CROSS_ARM_COUNT);
+	for (int a = 0; a < CROSS_ARM_COUNT; ++a)
+        mat_cross_r.push_back(Mat::zeros(num_rows, num_cols, CV_8UC(1)));
+	for (int a = 0; a < CROSS_ARM_COUNT; ++a)
+        data_cross_r[a] = mat_cross_r[a].data;
     
 	std::vector<Mat> mat_acost_l;
     float ** data_acost_l = (float**) malloc(sizeof(float*) * num_disp);
@@ -185,9 +201,8 @@ int main(int argc, char** argv)
     for (int d = 0; d < num_disp; ++d)
         data_acost_r[d] = (float*) mat_acost_r[d].data;
 	
-	ca_cross(data_img_l, data_cost_l, data_acost_l, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
-
-	ca_cross(data_img_r, data_cost_r, data_acost_r, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
+	ca_cross(data_img_l, data_cross_l, data_cost_l, data_acost_l, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
+	ca_cross(data_img_r, data_cross_r, data_cost_r, data_acost_r, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
 
     ///////////////////////////
     // DISPARITY COMPUTATION //
@@ -446,10 +461,14 @@ int main(int argc, char** argv)
 
     free(data_cost_l); 
     free(data_cost_r); 
+	free(data_cross_l);
+	free(data_cross_r);
     free(data_acost_l); 
     free(data_acost_r); 
     mat_cost_l.clear();
     mat_cost_r.clear();
+    mat_cross_l.clear();
+    mat_cross_r.clear();
     mat_acost_l.clear();
     mat_acost_r.clear();
     mat_views.clear();

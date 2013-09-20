@@ -309,7 +309,7 @@ void d_ca_cross(unsigned char* d_img, float** d_cost,
     free(h_cross);
 }
 
-void ca_cross(unsigned char* img, float** cost, float** acost,
+void ca_cross(unsigned char* img, unsigned char **cross, float** cost, float** acost,
               float ucd, float lcd, int usd, int lsd,
               int num_disp, int num_rows, int num_cols, int elem_sz)
 {
@@ -342,9 +342,7 @@ void ca_cross(unsigned char* img, float** cost, float** acost,
     unsigned char** h_cross = (unsigned char**) malloc(sizeof(unsigned char*) * CROSS_ARM_COUNT);
     
     for (int i = 0; i < CROSS_ARM_COUNT; ++i)
-    {
         checkCudaError(cudaMalloc(&h_cross[i], sizeof(unsigned char) * num_rows * num_cols));
-    }
 
     checkCudaError(cudaMemcpy(d_cross, h_cross, sizeof(unsigned char*) * CROSS_ARM_COUNT, cudaMemcpyHostToDevice));
     
@@ -352,6 +350,9 @@ void ca_cross(unsigned char* img, float** cost, float** acost,
     startCudaTimer(&timer);
     ca_cross_construction_kernel<<<grid_sz, block_sz>>>(d_img, d_cross, ucd, lcd, usd, lsd, num_rows, num_cols, elem_sz);
     stopCudaTimer(&timer, "Cross Aggragation - Cross Construciton Kernel");
+
+    for (int i = 0; i < CROSS_ARM_COUNT; ++i)
+        checkCudaError(cudaMemcpy(cross[i], h_cross[i], sizeof(unsigned char) * num_rows * num_cols, cudaMemcpyDeviceToHost));
     
     ///////////////////////////
     // CROSS-AGGRAGATE COSTS // 

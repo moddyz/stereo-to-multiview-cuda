@@ -15,7 +15,7 @@ void d_ca_cross(unsigned char* d_img, float** d_cost,
                 float ucd, float lcd, int usd, int lsd,
                 int num_disp, int num_rows, int num_cols, int elem_sz);
 
-void ca_cross(unsigned char* img, float** cost, float** acost,
+void ca_cross(unsigned char* img, unsigned char **cross, float** cost, float** acost,
               float ucd, float lcd, int usd, int lsd,
               int num_disp, int num_rows, int num_cols, int elem_sz);
 
