@@ -32,6 +32,10 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
     cross[CROSS_ARM_DOWN][tx + ty * num_cols] = 0;
     cross[CROSS_ARM_LEFT][tx + ty * num_cols] = 0;
     cross[CROSS_ARM_RIGHT][tx + ty * num_cols] = 0;
+        
+    int p_color_b = a_color_b;
+    int p_color_g = a_color_g;
+    int p_color_r = a_color_r;
     
     // Upper arm
     for (int y = 1; y <= usd; ++y)
@@ -44,10 +48,6 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
         int c_color_b = (int) img[(tx + (ty - y) * num_cols) * elem_sz];
         int c_color_g = (int) img[(tx + (ty - y) * num_cols) * elem_sz + 1];
         int c_color_r = (int) img[(tx + (ty - y) * num_cols) * elem_sz + 2];
-        
-        int p_color_b = (int) img[(tx + (ty - y) * num_cols) * elem_sz];
-        int p_color_g = (int) img[(tx + (ty - y) * num_cols) * elem_sz + 1];
-        int p_color_r = (int) img[(tx + (ty - y) * num_cols) * elem_sz + 2];
 
         int ac_mad = max(max(abs(c_color_b - a_color_b), abs(c_color_g - a_color_g)), abs(c_color_r - a_color_r));
         int cp_mad = max(max(abs(c_color_b - p_color_b), abs(c_color_g - p_color_g)), abs(c_color_r - p_color_r));
@@ -62,7 +62,15 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
             if ((float) ac_mad > lcd || (float) cp_mad > lcd)
                 break;
         }
+
+        p_color_b = c_color_b;
+        p_color_g = c_color_g;
+        p_color_r = c_color_r;
     }
+        
+    p_color_b = a_color_b;
+    p_color_g = a_color_g;
+    p_color_r = a_color_r;
 
     // Down arm
     for (int y = 1; y <= usd; ++y)
@@ -93,7 +101,14 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
             if ((float) ac_mad > lcd || (float) cp_mad > lcd)
                 break;
         }
+        p_color_b = c_color_b;
+        p_color_g = c_color_g;
+        p_color_r = c_color_r;
     }
+        
+    p_color_b = a_color_b;
+    p_color_g = a_color_g;
+    p_color_r = a_color_r;
     
     // Left arm
     for (int x = 1; x <= usd; ++x)
@@ -124,7 +139,14 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
             if ((float) ac_mad > lcd || (float) cp_mad > lcd)
                 break;
         }
+        p_color_b = c_color_b;
+        p_color_g = c_color_g;
+        p_color_r = c_color_r;
     }
+        
+    p_color_b = a_color_b;
+    p_color_g = a_color_g;
+    p_color_r = a_color_r;
     
     // Right arm
     for (int x = 1; x <= usd; ++x)
@@ -155,7 +177,14 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
             if ((float) ac_mad > lcd || (float) cp_mad > lcd)
                 break;
         }
+        p_color_b = c_color_b;
+        p_color_g = c_color_g;
+        p_color_r = c_color_r;
     }
+        
+    p_color_b = a_color_b;
+    p_color_g = a_color_g;
+    p_color_r = a_color_r;
 }
 
 void d_ca_cross(unsigned char* d_img, float** d_cost,  
@@ -419,9 +448,9 @@ void ca_cross(unsigned char* img, float** cost, float** acost,
     startCudaTimer(&timer);
     cost_transpose_kernel_4<<<grid_sz_t_v, block_sz_t_v>>>(d_cost, d_acost, num_disp, num_cols, num_rows, sm_width, sm_width); stopCudaTimer(&timer, "Cost Transpose Kernel #4");
 	
-    startCudaTimer(&timer);
-    ca_cross_hsum_kernel_2<<<grid_sz, block_sz, sizeof(float) * sm_sz>>>(d_acost, d_cost, d_cross, num_disp, num_rows, num_cols, sm_cols, sm_sz, sm_padding); 
-    stopCudaTimer(&timer, "Cross Horizontal Sum #2");
+	startCudaTimer(&timer);
+    ca_cross_hsum_kernel_3<<<grid_sz_s, block_sz_s, sizeof(float) * sm_sz_s>>>(d_acost, d_cost, d_cross, num_disp, num_rows, num_cols, sm_cols_s, sm_sz_s, sm_padding_s, ipt_s); 
+    stopCudaTimer(&timer, "Cross Horizontal Sum #3");
 	
     for (int d = 0; d < num_disp; ++d)
     {

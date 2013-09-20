@@ -16,6 +16,7 @@
 #include "d_dibr_bwarp.h"
 #include "d_dc_wta.h"
 #include "d_dc_hslo.h"
+#include "d_dr_dcc.h"
 #include "d_ca_cross.h"
 #include "d_ci_adcensus.h"
 #include "d_ci_census.h"
@@ -37,7 +38,7 @@ typedef enum
     DISPLAY_MODE_COST,
     DISPLAY_MODE_ACOST,
     DISPLAY_MODE_DISPARITY,
-    DISPLAY_MODE_OCCLUSION,
+    DISPLAY_MODE_OUTLIERS,
     DISPLAY_MODE_MASK,
     DISPLAY_MODE_MULTIVIEW,
     DISPLAY_MODE_INTERLACED,
@@ -205,7 +206,14 @@ int main(int argc, char** argv)
     // DISPARITY REFINEMENT //
     //////////////////////////
 
-	
+    Mat mat_outliers_l = Mat::zeros(num_rows, num_cols, CV_8UC(1));
+    Mat mat_outliers_r = Mat::zeros(num_rows, num_cols, CV_8UC(1));
+
+    unsigned char* data_outliers_l = mat_outliers_l.data;
+    unsigned char* data_outliers_r = mat_outliers_r.data;
+
+    dr_dcc(data_outliers_l, data_outliers_r, data_disp_l, data_disp_r, num_rows, num_cols);
+
 	filter_bilateral_1(data_disp_l, 7, 7, 7, num_rows, num_cols, num_disp);
     filter_bilateral_1(data_disp_r, 7, 7, 7, num_rows, num_cols, num_disp);
 	
@@ -268,8 +276,8 @@ int main(int argc, char** argv)
     }
 	normalize(mat_disp_l, mat_disp_l, 0, 1, CV_MINMAX);
 	normalize(mat_disp_r, mat_disp_r, 0, 1, CV_MINMAX);
-    normalize(mat_occl_l, mat_occl_l, 0, 255, CV_MINMAX);
-    normalize(mat_occl_r, mat_occl_r, 0, 255, CV_MINMAX);
+    normalize(mat_outliers_l, mat_outliers_l, 0, 255, CV_MINMAX);
+    normalize(mat_outliers_r, mat_outliers_r, 0, 255, CV_MINMAX);
    
     //////////////////
     // TESTING HSLO //
@@ -319,7 +327,7 @@ int main(int argc, char** argv)
             	display_mode = DISPLAY_MODE_DISPARITY;
 				break;
 			case '5':
-            	display_mode = DISPLAY_MODE_OCCLUSION;
+            	display_mode = DISPLAY_MODE_OUTLIERS;
 				break;
 			case '6':
             	display_mode = DISPLAY_MODE_MASK;
@@ -399,15 +407,15 @@ int main(int argc, char** argv)
 					printf("Showing Right Disparity\n");
 				}
 				break;
-			case DISPLAY_MODE_OCCLUSION:
+			case DISPLAY_MODE_OUTLIERS:
 				if (display_persp == DISPLAY_PERSP_LEFT)
 				{
-					imshow("Display", mat_occl_l);
+					imshow("Display", mat_outliers_l);
 					printf("Showing Left Occlusion\n");
 				}
 				else if (display_persp == DISPLAY_PERSP_RIGHT)
 				{
-					imshow("Display", mat_occl_r);
+					imshow("Display", mat_outliers_r);
 					printf("Showing Right Occlusion\n");
 				}
 				break;
