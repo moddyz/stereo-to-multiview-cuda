@@ -17,6 +17,7 @@
 #include "d_dc_wta.h"
 #include "d_dc_hslo.h"
 #include "d_dr_dcc.h"
+#include "d_dr_irv.h"
 #include "d_ca_cross.h"
 #include "d_ci_adcensus.h"
 #include "d_ci_census.h"
@@ -58,7 +59,7 @@ void printMatInfo(Mat mat, char *mat_name)
 
 int main(int argc, char** argv)
 {
-    if (argc != 15) 
+    if (argc != 17) 
     {
         printf("Place images in img subdir: \n");
         printf("then input file names directly w/o dir extension \n");
@@ -126,6 +127,8 @@ int main(int argc, char** argv)
 	float angle = atof(argv[12]);
 	int num_cols_out = atoi(argv[13]);
 	int num_rows_out = atoi(argv[14]);
+	int thresh_s = atoi(argv[15]);
+	float thresh_h = atof(argv[16]);
 
     printf("Input Width:             %d\n", num_cols); 
     printf("Input Height:            %d\n", num_rows); 
@@ -141,6 +144,8 @@ int main(int argc, char** argv)
     printf("Lower Color Delta:       %f\n", lcd);
     printf("Upper Spatial Delta:     %d\n", usd);
     printf("Lower Spatial Delta:     %d\n", lsd);
+    printf("Threshold S:             %d\n", thresh_s);
+    printf("Threshold H:             %f\n", thresh_h);
     printf("\n");
     
     /////////////////////////
@@ -228,9 +233,13 @@ int main(int argc, char** argv)
     unsigned char* data_outliers_r = mat_outliers_r.data;
 
     dr_dcc(data_outliers_l, data_outliers_r, data_disp_l, data_disp_r, num_rows, num_cols);
+	
+	dr_irv(data_disp_l, data_outliers_l, data_cross_l, thresh_s, thresh_h, num_rows, num_cols, num_disp, zero_disp, 5);
+	dr_irv(data_disp_r, data_outliers_r, data_cross_r, thresh_s, thresh_h, num_rows, num_cols, num_disp, zero_disp, 5);
 
-	filter_bilateral_1(data_disp_l, 7, 7, 7, num_rows, num_cols, num_disp);
-    filter_bilateral_1(data_disp_r, 7, 7, 7, num_rows, num_cols, num_disp);
+
+	//filter_bilateral_1(data_disp_l, 7, 7, 7, num_rows, num_cols, num_disp);
+    //filter_bilateral_1(data_disp_r, 7, 7, 7, num_rows, num_cols, num_disp);
 	
 	//////////
     // DIBR //
