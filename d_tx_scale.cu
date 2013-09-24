@@ -5,6 +5,27 @@
 #include "cuda_utils.h"
 #include <math.h>
 
+__global__ void tx_disp_scale_kernel(float *disp_out, float *disp_in,  
+                                     int out_rows, int out_cols, int in_rows, int in_cols,
+                                     float disp_scale)
+{
+    // Thread Id's
+    int tx = threadIdx.x + blockIdx.x * blockDim.x;
+    int ty = threadIdx.y + blockIdx.y * blockDim.y;
+
+    if (tx >= out_cols || ty >= out_rows)
+        return;
+    
+    // Compute Input Sampling Coordinates
+    float x_samp = fmin(fmax(((float) tx / (float) out_cols) * (float) in_cols, 0), (float) (in_cols - 1));
+    float y_samp = fmin(fmax(((float) ty / (float) out_rows) * (float) in_rows, 0), (float) (in_rows - 1));
+    
+    // Write to Output
+    int d_out = tx + ty * out_cols;
+
+    disp_out[d_out] = alu_bilinear_interp_f(disp_in, x_samp, y_samp, in_cols, in_rows) * disp_scale;
+}
+
 
 __global__ void tx_scale_bilinear_kernel(unsigned char* img_in, unsigned char* img_out,  
                                          int in_rows, int in_cols, int out_rows, int out_cols, int elem_sz)
@@ -83,12 +104,6 @@ void d_tx_scale(unsigned char* img_in, unsigned char* img_out,
     const dim3 block_sz(bw, bh, 1);
     const dim3 grid_sz(gw, gh, 1);
 
-    /* 
-    float sw = ceil(((float) bw / (float) out_cols) * (float) in_cols);
-    float sh = ceil(((float) bh / (float) out_rows) * (float) in_rows);
-    const size_t shared_sz = sw * sh;
-    printf("Shared Memory w:%f h:%f \n\n", sw, sh);
-    */ 
     // Launch Kernel
     startCudaTimer(&timer);
     tx_scale_bilinear_kernel<<<grid_sz, block_sz>>>(d_img_in, d_img_out,

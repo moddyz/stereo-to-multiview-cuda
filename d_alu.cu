@@ -14,6 +14,34 @@ extern __device__ int alu_hamdist_64(unsigned long long a, unsigned long long b)
     return dist;
 }
 
+extern __device__ float alu_bilinear_interp_f(float* data, float coord_x, float coord_y, int width, int height) 
+{
+    int coord_00_x = floor(coord_x);
+    int coord_00_y = floor(coord_y);
+    
+    int coord_01_x = min(coord_00_x + 1, width - 1);
+    int coord_01_y = coord_00_y;
+
+    int coord_10_x = coord_00_x;
+    int coord_10_y = min(coord_00_y + 1, height - 1);
+    
+    int coord_11_x = min(coord_00_x + 1, width - 1);
+    int coord_11_y = min(coord_00_y + 1, height - 1);
+
+    float weight_x = coord_x - (float) coord_00_x;
+    float weight_y = coord_y - (float) coord_00_y;
+
+    float val_00 = data[coord_00_x + coord_00_y * width];
+    float val_01 = data[coord_01_x + coord_01_y * width];
+    float val_10 = data[coord_10_x + coord_10_y * width];
+    float val_11 = data[coord_11_x + coord_11_y * width];
+
+    float top = (float) val_00 * (1.0f - weight_x) + (float) val_01 * weight_x;
+    float bot = (float) val_10 * (1.0f - weight_x) + (float) val_11 * weight_x;
+    
+    return top * (1.0f - weight_y) + bot * weight_y;
+}
+
 extern __device__ unsigned char alu_bilinear_interp(unsigned char* data, int elem_sz, int elem_offset, float coord_x, float coord_y, int width, int height) 
 {
     int coord_00_x = floor(coord_x);

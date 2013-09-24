@@ -36,4 +36,15 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
                   float ad_coeff, float census_coeff,
                   float ucd, float lcd, int usd, int lsd);
 
+void adcensus_stm_2(unsigned char *img_sbs, float *disp_l, float *disp_r,
+                    unsigned char* interlaced,
+                    int num_rows, int num_cols_sbs, int num_cols, 
+                    int num_rows_out, int num_cols_out, 
+					int num_rows_disp, int num_cols_disp,	
+					int elem_sz, float disp_scale,
+                    int num_views, int angle,
+                    int num_disp, int zero_disp,
+                    float ad_coeff, float census_coeff,
+                    float ucd, float lcd, int usd, int lsd);
+
 #endif

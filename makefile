@@ -22,16 +22,22 @@ DEVICE_OBJECTS = d_io.o d_alu.o d_ci_census.o d_ci_ad.o d_mux_multiview.o d_tx_s
 DEVICE_LINK = device.o
 HOST_OBJECTS = getCPUtime.o
 
-all: video_io image_io
+all: video_io image_io video_io_2
 
 # Link Host to Device Objects
 video_io: host_video_io.o $(HOST_OBJECTS) $(DEVICE_LINK)
 	$(GCC) $(GCC_OPTS) -o video_io host_video_io.o $(HOST_OBJECTS) $(DEVICE_OBJECTS) $(DEVICE_LINK) -L$(OPENCV_LIB_PATH) -L$(CUDA_LIB_PATH) $(OPENCV_LIBS) $(USER_LIBS) -lcudart
 
+video_io_2: host_video_io_2.o $(HOST_OBJECTS) $(DEVICE_LINK)
+	$(GCC) $(GCC_OPTS) -o video_io_2 host_video_io_2.o $(HOST_OBJECTS) $(DEVICE_OBJECTS) $(DEVICE_LINK) -L$(OPENCV_LIB_PATH) -L$(CUDA_LIB_PATH) $(OPENCV_LIBS) $(USER_LIBS) -lcudart
+
 image_io: host_image_io.o $(HOST_OBJECTS) $(DEVICE_LINK)
 	$(GCC) $(GCC_OPTS) -o image_io host_image_io.o $(HOST_OBJECTS) $(DEVICE_OBJECTS) $(DEVICE_LINK) -L$(OPENCV_LIB_PATH) -L$(CUDA_LIB_PATH) $(OPENCV_LIBS) $(USER_LIBS) -lcudart
 
 # Host Objects
+host_video_io_2.o: video_io_2.cpp
+	$(GCC) -c video_io_2.cpp $(GCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH) -o host_video_io_2.o
+
 host_video_io.o: video_io.cpp
 	$(GCC) -c video_io.cpp $(GCC_OPTS) -I $(CUDA_INCLUDE_PATH) -I $(OPENCV_INCLUDE_PATH) -o host_video_io.o
 

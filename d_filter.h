@@ -5,6 +5,14 @@
 #include <cuda_runtime.h>
 #include <cuda_runtime_api.h>
 
+__global__ void filter_median_kernel(float *out, float *in, 
+                                     int num_rows, int num_cols);
+
+void filter_median(float *img,
+                   int num_rows, int num_cols);
+
+void d_filter_median(float *d_img_in,
+                   int num_rows, int num_cols);
 
 __global__ void filter_bleed_1_kernel(unsigned char *img_out, unsigned char *img_in,
                                       int radius, int kernel_sz,

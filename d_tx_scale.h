@@ -6,6 +6,10 @@
 #include <cuda_runtime_api.h>
 #include "d_alu.h"
 
+__global__ void tx_disp_scale_kernel(float *disp_out, float *disp_in,  
+                                     int out_rows, int out_cols, int in_rows, int in_cols,
+                                     float disp_scale);
+
 __global__ void tx_scale_bilinear_kernel(unsigned char* img_in, unsigned char* img_out, 
                                          int in_rows, int in_cols, int out_rows, int out_cols, int elem_sz);
 
