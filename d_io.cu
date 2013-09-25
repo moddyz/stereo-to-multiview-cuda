@@ -329,8 +329,6 @@ void adcensus_stm_2(unsigned char *img_sbs, float *disp_l, float *disp_r,
     free(h_adcensus_cost_l); 
     free(h_adcensus_cost_r); 
 
-    
-
     float *d_high_disp_l, *d_high_disp_r;	
     
 	checkCudaError(cudaMalloc(&d_high_disp_l, sizeof(float) * img_sz));

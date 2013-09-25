@@ -74,6 +74,8 @@ __global__ void filter_bilateral_1_kernel_5(float *img_out, float* kernel,
          }
     }
 
+    // Populate Shared Memory KERNEL
+
     for (int gsy = ty, tsy = ty;
          tsy < sm_kernel_len;
          gsy += blockDim.y, tsy += blockDim.y)

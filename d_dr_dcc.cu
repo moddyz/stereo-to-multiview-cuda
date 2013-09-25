@@ -56,6 +56,7 @@ __global__ void dr_ddc_kernel(unsigned char* disoccl_l, unsigned char *disoccl_r
 
 __global__ void dr_dcc_kernel(unsigned char* outliers_l, unsigned char *outliers_r,
                              float *disp_l, float *disp_r,
+                             float thresh,
                              int num_rows, int num_cols)
 {
     int gx = threadIdx.x + blockIdx.x * blockDim.x; 
@@ -64,18 +65,18 @@ __global__ void dr_dcc_kernel(unsigned char* outliers_l, unsigned char *outliers
     if (gx >= num_cols || gy >= num_rows)
         return;
 
-    int d = (int) disp_l[gx + gy * num_cols];
-    int coord = min(max(gx + d, 0), num_cols - 1);
-    int d_ref = (int) disp_r[coord + gy * num_cols];
+    float d =  disp_l[gx + gy * num_cols];
+    int coord = min(max(gx + (int) d, 0), num_cols - 1);
+    float d_ref = disp_r[coord + gy * num_cols];
     
-    if (d != d_ref)
+    if (abs(d - d_ref) > thresh)
         outliers_l[gx + gy * num_cols] = 1;
     
-    d = (int) disp_r[gx + gy * num_cols];
-    coord = min(max(gx - d, 0), num_cols - 1);
-    d_ref = (int) disp_l[coord + gy * num_cols];
+    d = disp_r[gx + gy * num_cols];
+    coord = min(max(gx - (int) d, 0), num_cols - 1);
+    d_ref = disp_l[coord + gy * num_cols];
     
-    if (d != d_ref)
+    if (abs(d - d_ref) > thresh)
         outliers_r[gx + gy * num_cols] = 1;
 
 }
@@ -130,7 +131,7 @@ void dr_dcc(unsigned char *outliers_l, unsigned char *outliers_r,
     //////////////////////
     
     startCudaTimer(&timer); 
-    dr_dcc_kernel<<<grid_sz, block_sz>>>(d_outliers_l, d_outliers_r, d_disp_l, d_disp_r, num_rows, num_cols);
+    dr_dcc_kernel<<<grid_sz, block_sz>>>(d_outliers_l, d_outliers_r, d_disp_l, d_disp_r, 1.0, num_rows, num_cols);
     stopCudaTimer(&timer, "Outliers Detection Kernel"); 
 
     startCudaTimer(&timer);
