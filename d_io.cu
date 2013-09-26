@@ -247,7 +247,8 @@ void adcensus_stm_2(unsigned char *img_sbs, float *disp_l, float *disp_r,
                     int num_disp, int zero_disp,
                     float ad_coeff, float census_coeff,
                     float ucd, float lcd, int usd, int lsd,
-                    int thresh_s, float thresh_h)
+                    int thresh_s, float thresh_h,
+                    bool enable_refinement)
 {
     ///////////
     // SIZES //
@@ -394,11 +395,14 @@ void adcensus_stm_2(unsigned char *img_sbs, float *disp_l, float *disp_r,
     checkCudaError(cudaMemset(d_outliers_l, 0, sizeof(unsigned char) * disp_img_sz));
     checkCudaError(cudaMalloc(&d_outliers_r, sizeof(unsigned char) * disp_img_sz));
     checkCudaError(cudaMemset(d_outliers_r, 0, sizeof(unsigned char) * disp_img_sz));
-    
-    d_dr_dcc(d_outliers_l, d_outliers_r, d_disp_l, d_disp_r, num_rows_disp, num_cols_disp);
+   
+    if (enable_refinement)
+    {
+        d_dr_dcc(d_outliers_l, d_outliers_r, d_disp_l, d_disp_r, num_rows_disp, num_cols_disp);
 
-    d_dr_irv(d_disp_l, d_outliers_l, d_cross_l, thresh_s, thresh_h, num_rows_disp, num_cols_disp, num_disp, zero_disp, usd, 5);
-    d_dr_irv(d_disp_r, d_outliers_r, d_cross_r, thresh_s, thresh_h, num_rows_disp, num_cols_disp, num_disp, zero_disp, usd, 5);
+        d_dr_irv(d_disp_l, d_outliers_l, d_cross_l, thresh_s, thresh_h, num_rows_disp, num_cols_disp, num_disp, zero_disp, usd, 5);
+        d_dr_irv(d_disp_r, d_outliers_r, d_cross_r, thresh_s, thresh_h, num_rows_disp, num_cols_disp, num_disp, zero_disp, usd, 5);
+    }
     
     d_filter_bilateral_1(d_disp_l, 7, 5, 10, num_rows_disp, num_cols_disp, num_disp);
     d_filter_bilateral_1(d_disp_r, 7, 5, 10, num_rows_disp, num_cols_disp, num_disp);

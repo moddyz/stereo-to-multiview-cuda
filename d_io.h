@@ -49,6 +49,7 @@ void adcensus_stm_2(unsigned char *img_sbs, float *disp_l, float *disp_r,
                     int num_disp, int zero_disp,
                     float ad_coeff, float census_coeff,
                     float ucd, float lcd, int usd, int lsd,
-                    int thresh_s, float thresh_h);
+                    int thresh_s, float thresh_h,
+                    bool enable_refinement);
 
 #endif
