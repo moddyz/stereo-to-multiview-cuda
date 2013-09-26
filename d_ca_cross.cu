@@ -24,9 +24,9 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
     if ((tx > num_cols - 1) || (ty > num_rows - 1))
         return;
 
-    unsigned char a_color_b = img[(tx + ty * num_cols) * elem_sz];
-    unsigned char a_color_g = img[(tx + ty * num_cols) * elem_sz + 1];
-    unsigned char a_color_r = img[(tx + ty * num_cols) * elem_sz + 2];
+    int a_color_b = (int) img[(tx + ty * num_cols) * elem_sz];
+    int a_color_g = (int) img[(tx + ty * num_cols) * elem_sz + 1];
+    int a_color_r = (int) img[(tx + ty * num_cols) * elem_sz + 2];
     
     cross[CROSS_ARM_UP][tx + ty * num_cols] = 0;
     cross[CROSS_ARM_DOWN][tx + ty * num_cols] = 0;
@@ -67,7 +67,7 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
         p_color_g = c_color_g;
         p_color_r = c_color_r;
     }
-        
+    
     p_color_b = a_color_b;
     p_color_g = a_color_g;
     p_color_r = a_color_r;
@@ -75,7 +75,7 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
     // Down arm
     for (int y = 1; y <= usd; ++y)
     {
-        if ((ty + y) > (num_rows - 1))
+        if (ty + y > num_rows - 1)
             break;
         
         cross[CROSS_ARM_DOWN][tx + ty * num_cols] = (unsigned char) y;
@@ -84,10 +84,6 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
         int c_color_g = (int) img[(tx + (ty + y) * num_cols) * elem_sz + 1];
         int c_color_r = (int) img[(tx + (ty + y) * num_cols) * elem_sz + 2];
         
-        int p_color_b = (int) img[(tx + (ty + y) * num_cols) * elem_sz];
-        int p_color_g = (int) img[(tx + (ty + y) * num_cols) * elem_sz + 1];
-        int p_color_r = (int) img[(tx + (ty + y) * num_cols) * elem_sz + 2];
-
         int ac_mad = max(max(abs(c_color_b - a_color_b), abs(c_color_g - a_color_g)), abs(c_color_r - a_color_r));
         int cp_mad = max(max(abs(c_color_b - p_color_b), abs(c_color_g - p_color_g)), abs(c_color_r - p_color_r));
 
@@ -122,10 +118,6 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
         int c_color_g = (int) img[(tx - x + ty * num_cols) * elem_sz + 1];
         int c_color_r = (int) img[(tx - x + ty * num_cols) * elem_sz + 2];
         
-        int p_color_b = (int) img[(tx - x + ty * num_cols) * elem_sz];
-        int p_color_g = (int) img[(tx - x + ty * num_cols) * elem_sz + 1];
-        int p_color_r = (int) img[(tx - x + ty * num_cols) * elem_sz + 2];
-
         int ac_mad = max(max(abs(c_color_b - a_color_b), abs(c_color_g - a_color_g)), abs(c_color_r - a_color_r));
         int cp_mad = max(max(abs(c_color_b - p_color_b), abs(c_color_g - p_color_g)), abs(c_color_r - p_color_r));
 
@@ -151,7 +143,7 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
     // Right arm
     for (int x = 1; x <= usd; ++x)
     {
-        if ((tx + x) > (num_cols - 1))
+        if (tx + x > num_cols - 1)
             break;
         
         cross[CROSS_ARM_RIGHT][tx + ty * num_cols] = (unsigned char) x;
@@ -160,10 +152,6 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
         int c_color_g = (int) img[(tx + x + ty * num_cols) * elem_sz + 1];
         int c_color_r = (int) img[(tx + x + ty * num_cols) * elem_sz + 2];
         
-        int p_color_b = (int) img[(tx + x + ty * num_cols) * elem_sz];
-        int p_color_g = (int) img[(tx + x + ty * num_cols) * elem_sz + 1];
-        int p_color_r = (int) img[(tx + x + ty * num_cols) * elem_sz + 2];
-
         int ac_mad = max(max(abs(c_color_b - a_color_b), abs(c_color_g - a_color_g)), abs(c_color_r - a_color_r));
         int cp_mad = max(max(abs(c_color_b - p_color_b), abs(c_color_g - p_color_g)), abs(c_color_r - p_color_r));
 
@@ -181,10 +169,6 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
         p_color_g = c_color_g;
         p_color_r = c_color_r;
     }
-        
-    p_color_b = a_color_b;
-    p_color_g = a_color_g;
-    p_color_r = a_color_r;
 }
 
 void d_ca_cross(unsigned char* d_img, float** d_cost,  

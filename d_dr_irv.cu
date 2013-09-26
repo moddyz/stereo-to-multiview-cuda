@@ -176,6 +176,8 @@ __global__ void dr_irv_pre_kernel(float *disp, unsigned char *outliers, unsigned
     {
         int cross_u = cross[CROSS_ARM_UP][gx_gy_num_cols];
         int cross_d = cross[CROSS_ARM_DOWN][gx_gy_num_cols];
+        if (cross_u > sm_padding)
+            cross_u = sm_padding;
         int max_bin = 0;
         int max_d = sm_disp[tx + sm_padding + (ty + sm_padding) * sm_width];
         int total_reliable = 0;
@@ -186,6 +188,8 @@ __global__ void dr_irv_pre_kernel(float *disp, unsigned char *outliers, unsigned
         {
             int cross_l = cross[CROSS_ARM_LEFT][gx + (gy + y) * num_cols];
             int cross_r = cross[CROSS_ARM_RIGHT][gx + (gy + y) * num_cols];
+
+            //printf("%d %d, %d %d\n", cross_u, cross_d, cross_l, cross_r);
             for (int x = -cross_l; x <= cross_r; ++x)
             {
                 int sidx = tx + sm_padding + x + (ty + sm_padding + y) * sm_width;
@@ -249,13 +253,13 @@ void d_dr_irv( float* d_disp, unsigned char* d_outliers,
 
     int sw = pbw + 2 * usd;
     int sh = pbh + 2 * usd;
-    int sm_sz = sw * sh + 1;
+    int sm_sz = sw * sh;
     
-    dr_irv_pre_kernel<<<pre_grid_sz, pre_block_sz, sizeof(float) * sm_sz + sizeof(unsigned char) * sm_sz>>>(d_disp, d_outliers, d_cross, d_max_disp, d_reliable, num_rows, num_cols, num_disp, zero_disp, sw, sh, sm_sz, usd);
-    cudaDeviceSynchronize();
 
     for (int i = 0; i < iterations; ++i)
     {
+        dr_irv_pre_kernel<<<pre_grid_sz, pre_block_sz, sizeof(float) * sm_sz + sizeof(unsigned char) * sm_sz>>>(d_disp, d_outliers, d_cross, d_max_disp, d_reliable, num_rows, num_cols, num_disp, zero_disp, sw, sh, sm_sz, usd);
+        cudaDeviceSynchronize();
         dr_irv_kernel_3<<<grid_sz, block_sz>>>(d_disp, d_outliers, d_max_disp, d_reliable, thresh_s, thresh_h, num_rows, num_cols, num_disp, zero_disp); 
         cudaDeviceSynchronize();
     }

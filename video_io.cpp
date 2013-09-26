@@ -46,7 +46,7 @@ int main( int argc, char **argv)
     /////////////////////
 
     //printDeviceInfo();
-    if (argc != 14) 
+    if (argc != 16) 
     {
         printf("Place images in img subdir: \n");
         printf("then input file names directly w/o dir extension \n");
@@ -105,6 +105,8 @@ int main( int argc, char **argv)
     float lcd = atof(argv[11]);
     int usd = atoi(argv[12]);
     int lsd = atoi(argv[13]);
+    int thresh_s = atoi(argv[14]);
+    float thresh_h = atof(argv[15]);
 
 
     printf("Number of Views:         %d\n", num_views);
@@ -119,44 +121,48 @@ int main( int argc, char **argv)
     printf("Lower Color Delta:       %f\n", lcd);
     printf("Upper Spatial Delta:     %d\n", usd);
     printf("Lower Spatial Delta:     %d\n", lsd);
+    printf("Threshold S:             %d\n", thresh_s);
+    printf("Threshold H:             %f\n", thresh_h);
     printf("\n");
     
     int display_mode = DISPLAY_MODE_INTERLACED;
     int display_persp = 0;
+    int paused = false;
+    
+    unsigned char* data_sbs = mat_sbs.data;
+            
+    Mat mat_disp_l = Mat::zeros(num_rows, num_cols, CV_32F);
+    Mat mat_disp_r = Mat::zeros(num_rows, num_cols, CV_32F);
+    
+    float* data_disp_l = (float*) mat_disp_l.data;
+    float* data_disp_r = (float*) mat_disp_r.data;
+    
+    Mat mat_interlaced = Mat::zeros(num_rows_out, num_cols_out, CV_8UC(3));
+    unsigned char* data_interlaced = mat_interlaced.data;
     
     namedWindow("Display");
     for (;;)
     {
-        bool read_img = vc_sbs.read(mat_sbs);
-        if (read_img == false)
+        if (paused == false)
         {
-            vc_sbs.set(CV_CAP_PROP_POS_MSEC, 0);
-            continue;
+            bool read_img = vc_sbs.read(mat_sbs);
+            if (read_img == false)
+            {
+                vc_sbs.set(CV_CAP_PROP_POS_MSEC, 0);
+                continue;
+            }
+        
+            // Process SBS image
+            double startTime, endTime;
+            startTime = getCPUTime();
+            adcensus_stm(data_sbs, data_disp_l, data_disp_r, data_interlaced, num_rows, num_cols_sbs, num_cols, num_rows_out, num_cols_out, elem_sz, num_views, angle, num_disp, zero_disp, ad_coeff, census_coeff, ucd, lcd, usd, lsd, thresh_s, thresh_h);
+            endTime = getCPUTime();
+
+            fprintf( stderr, "CPU time used = %1f\n", (endTime - startTime));
+        
+            normalize(mat_disp_l, mat_disp_l, 0, 1, CV_MINMAX);
+            normalize(mat_disp_r, mat_disp_r, 0, 1, CV_MINMAX);
         }
-        
-        // Process SBS image
-
-        unsigned char* data_sbs = mat_sbs.data;
-        
-        Mat mat_disp_l = Mat::zeros(num_rows, num_cols, CV_32F);
-        Mat mat_disp_r = Mat::zeros(num_rows, num_cols, CV_32F);
-
-        float* data_disp_l = (float*) mat_disp_l.data;
-        float* data_disp_r = (float*) mat_disp_r.data;
-        
-        Mat mat_interlaced = Mat::zeros(num_rows_out, num_cols_out, CV_8UC(3));
-
-        unsigned char* data_interlaced = mat_interlaced.data;
-       	
-		double startTime, endTime;
-		startTime = getCPUTime();
-        adcensus_stm(data_sbs, data_disp_l, data_disp_r, data_interlaced, num_rows, num_cols_sbs, num_cols, num_rows_out, num_cols_out, elem_sz, num_views, angle, num_disp, zero_disp, ad_coeff, census_coeff, ucd, lcd, usd, lsd);
-		endTime = getCPUTime();
-
-		fprintf( stderr, "CPU time used = %1f\n", (endTime - startTime));
-    
-        normalize(mat_disp_l, mat_disp_l, 0, 1, CV_MINMAX);
-        normalize(mat_disp_r, mat_disp_r, 0, 1, CV_MINMAX);
 
         char key = waitKey(33);
 
@@ -184,6 +190,12 @@ int main( int argc, char **argv)
                 break;
 			case 'q':
 				return 0;
+			case 'p':
+                if (paused == false)
+				    paused = true;
+                else
+                    paused = false;
+                break;
             default:
                 break;
         }
