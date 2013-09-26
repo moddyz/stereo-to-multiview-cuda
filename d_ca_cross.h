@@ -12,6 +12,7 @@ __global__ void ca_cross_construction_kernel(unsigned char* img, unsigned char**
 
 void d_ca_cross(unsigned char* d_img, float** d_cost, 
                 float** d_acost, float** h_acost, float* d_acost_memory,
+                unsigned char **d_cross, 
                 float ucd, float lcd, int usd, int lsd,
                 int num_disp, int num_rows, int num_cols, int elem_sz);
 

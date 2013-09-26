@@ -11,6 +11,8 @@
 
 #include "cuda_utils.h"
 
+#include "d_dr_dcc.h"
+#include "d_dr_irv.h"
 #include "d_filter_gaussian.h"
 #include "d_filter_bilateral.h"
 #include "d_filter.h"

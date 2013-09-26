@@ -81,6 +81,53 @@ __global__ void dr_dcc_kernel(unsigned char* outliers_l, unsigned char *outliers
 
 }
 
+void d_dr_dcc(unsigned char *d_outliers_l, unsigned char *d_outliers_r,
+              float* d_disp_l, float *d_disp_r,
+              int num_rows, int num_cols)
+{
+    cudaEventPair_t timer;
+    
+    /////////////////////// 
+    // DEVICE PARAMETERS //
+    ///////////////////////
+
+    size_t bw = num_cols;
+    size_t bh = 1;
+    size_t gw = (num_cols + bw - 1) / bw;
+    size_t gh = (num_rows + bh - 1) / bh;
+    const dim3 block_sz(bw, bh, 1);
+    const dim3 grid_sz(gw, gh, 1);
+    
+    ///////////////////////
+    // MEMORY ALLOCATION //
+    ///////////////////////
+
+    unsigned char* d_disoccl_l;
+    checkCudaError(cudaMalloc(&d_disoccl_l, sizeof(unsigned char) * num_rows * num_cols));
+    checkCudaError(cudaMemset(d_disoccl_l, 1, sizeof(unsigned char) * num_rows * num_cols));
+    
+    unsigned char* d_disoccl_r;
+    checkCudaError(cudaMalloc(&d_disoccl_r, sizeof(unsigned char) * num_rows * num_cols));
+    checkCudaError(cudaMemset(d_disoccl_r, 1, sizeof(unsigned char) * num_rows * num_cols));
+
+    ///////////////////
+    // FIND OUTLIERS //
+    ///////////////////
+    
+    dr_dcc_kernel<<<grid_sz, block_sz>>>(d_outliers_l, d_outliers_r, d_disp_l, d_disp_r, 1.0, num_rows, num_cols);
+    dr_ddc_kernel<<<grid_sz, block_sz>>>(d_disoccl_l, d_disoccl_r, d_disp_l, d_disp_r, num_rows, num_cols);
+
+    cudaDeviceSynchronize();
+
+    dr_merge_errors_kernel<<<grid_sz, block_sz>>>(d_outliers_l, d_outliers_r, d_disoccl_l, d_disoccl_r, num_rows, num_cols);
+    
+    cudaDeviceSynchronize();
+    
+    cudaFree(d_disoccl_l);
+    cudaFree(d_disoccl_r);
+}
+
+
 void dr_dcc(unsigned char *outliers_l, unsigned char *outliers_r,
             float* disp_l, float *disp_r,
             int num_rows, int num_cols)

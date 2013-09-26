@@ -2,6 +2,8 @@
 #define D_IO_KERNEL
 #include "d_io.h"
 
+#define CROSS_ARM_COUNT 4
+
 void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
                   unsigned char* interlaced,
                   int num_rows, int num_cols_sbs, int num_cols, 
@@ -88,9 +90,27 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
     float* d_acost_memory;
     checkCudaError(cudaMalloc(&d_acost_memory, sizeof(float) * cost_sz * 2));
     
-    d_ca_cross(d_img_l, d_adcensus_cost_l, d_acost_l, h_acost_l, d_acost_memory, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
+    unsigned char** d_cross_l;
+    checkCudaError(cudaMalloc(&d_cross_l, sizeof(unsigned char*) * CROSS_ARM_COUNT));
+    unsigned char** h_cross_l = (unsigned char**) malloc(sizeof(unsigned char*) * CROSS_ARM_COUNT);
+    unsigned char* d_cross_memory_l;
+    checkCudaError(cudaMalloc(&d_cross_memory_l, sizeof(unsigned char) * img_sz * CROSS_ARM_COUNT));
+    for (int i = 0; i < CROSS_ARM_COUNT; ++i)
+        h_cross_l[i] = d_cross_memory_l + (i * img_sz);
+    checkCudaError(cudaMemcpy(d_cross_l, h_cross_l, sizeof(unsigned char*) * CROSS_ARM_COUNT, cudaMemcpyHostToDevice));
     
-    d_ca_cross(d_img_r, d_adcensus_cost_r, d_acost_r, h_acost_r, d_acost_memory + cost_sz, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
+    d_ca_cross(d_img_l, d_adcensus_cost_l, d_acost_l, h_acost_l, d_acost_memory, d_cross_l, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
+    
+    unsigned char** d_cross_r;
+    checkCudaError(cudaMalloc(&d_cross_r, sizeof(unsigned char*) * CROSS_ARM_COUNT));
+    unsigned char** h_cross_r = (unsigned char**) malloc(sizeof(unsigned char*) * CROSS_ARM_COUNT);
+    unsigned char* d_cross_memory_r;
+    checkCudaError(cudaMalloc(&d_cross_memory_r, sizeof(unsigned char) * img_sz * CROSS_ARM_COUNT));
+    for (int i = 0; i < CROSS_ARM_COUNT; ++i)
+        h_cross_r[i] = d_cross_memory_r + (i * img_sz);
+    checkCudaError(cudaMemcpy(d_cross_r, h_cross_r, sizeof(unsigned char*) * CROSS_ARM_COUNT, cudaMemcpyHostToDevice));
+    
+    d_ca_cross(d_img_r, d_adcensus_cost_r, d_acost_r, h_acost_r, d_acost_memory + cost_sz, d_cross_r, ucd, lcd, usd, lsd, num_disp, num_rows, num_cols, elem_sz);
 
     cudaFree(d_acost_l);
     cudaFree(d_acost_r);
@@ -116,12 +136,21 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
     free(h_adcensus_cost_l); 
     free(h_adcensus_cost_r); 
     
+    unsigned char *d_outliers_l, *d_outliers_r;
+    checkCudaError(cudaMalloc(&d_outliers_l, sizeof(unsigned char) * img_sz));
+    checkCudaError(cudaMemset(d_outliers_l, 0, sizeof(unsigned char) * img_sz));
+    checkCudaError(cudaMalloc(&d_outliers_r, sizeof(unsigned char) * img_sz));
+    checkCudaError(cudaMemset(d_outliers_r, 0, sizeof(unsigned char) * img_sz));
+    //d_dr_dcc(d_outliers_l, d_outliers_r, d_disp_l, d_disp_r, num_rows, num_cols);
+
+    //d_dr_irv(d_disp_l, d_outliers_l, d_cross_l, 10, 0.2, num_rows, num_cols, num_disp, zero_disp, usd, 5);
+    //d_dr_irv(d_disp_r, d_outliers_r, d_cross_r, 10, 0.2, num_rows, num_cols, num_disp, zero_disp, usd, 5);
+    
     d_filter_bilateral_1(d_disp_l, 7, 5, 10, num_rows, num_cols, num_disp);
     d_filter_bilateral_1(d_disp_r, 7, 5, 10, num_rows, num_cols, num_disp);
 
     checkCudaError(cudaMemcpy(disp_l, d_disp_l, sizeof(float) * img_sz, cudaMemcpyDeviceToHost));
     checkCudaError(cudaMemcpy(disp_r, d_disp_r, sizeof(float) * img_sz, cudaMemcpyDeviceToHost));
-     
     
     //////////
     // DIBR //
@@ -181,8 +210,17 @@ void adcensus_stm(unsigned char *img_sbs, float *disp_l, float *disp_r,
     cudaFree(d_img_l);
     cudaFree(d_img_r);
     
+    cudaFree(d_cross_l);
+    cudaFree(d_cross_r);
+    cudaFree(d_cross_memory_l);
+    cudaFree(d_cross_memory_r);
+    free(h_cross_l);
+    free(h_cross_r);
+    
     cudaFree(d_disp_l);
     cudaFree(d_disp_r);
+    cudaFree(d_outliers_l);
+    cudaFree(d_outliers_r);
     cudaFree(d_occl_l);
     cudaFree(d_occl_r);
     cudaFree(d_mask_l);
@@ -297,11 +335,29 @@ void adcensus_stm_2(unsigned char *img_sbs, float *disp_l, float *disp_r,
 
     float* d_acost_memory;
     checkCudaError(cudaMalloc(&d_acost_memory, sizeof(float) * disp_cost_sz * 2));
-    
-    d_ca_cross(d_low_img_l, d_adcensus_cost_l, d_acost_l, h_acost_l, d_acost_memory, ucd, lcd, usd, lsd, num_disp, num_rows_disp, num_cols_disp, elem_sz);
-    
-    d_ca_cross(d_low_img_r, d_adcensus_cost_r, d_acost_r, h_acost_r, d_acost_memory + disp_cost_sz, ucd, lcd, usd, lsd, num_disp, num_rows_disp, num_cols_disp, elem_sz);
 
+    unsigned char** d_cross_l;
+    checkCudaError(cudaMalloc(&d_cross_l, sizeof(unsigned char*) * CROSS_ARM_COUNT));
+    unsigned char** h_cross_l = (unsigned char**) malloc(sizeof(unsigned char*) * CROSS_ARM_COUNT);
+    unsigned char* d_cross_memory_l;
+    checkCudaError(cudaMalloc(&d_cross_memory_l, sizeof(unsigned char) * disp_img_sz * CROSS_ARM_COUNT));
+    for (int i = 0; i < CROSS_ARM_COUNT; ++i)
+        h_cross_l[i] = d_cross_memory_l + (i * disp_img_sz);
+    checkCudaError(cudaMemcpy(d_cross_l, h_cross_l, sizeof(unsigned char*) * CROSS_ARM_COUNT, cudaMemcpyHostToDevice));
+    
+    d_ca_cross(d_low_img_l, d_adcensus_cost_l, d_acost_l, h_acost_l, d_acost_memory, d_cross_l, ucd, lcd, usd, lsd, num_disp, num_rows_disp, num_cols_disp, elem_sz);
+
+    unsigned char** d_cross_r;
+    checkCudaError(cudaMalloc(&d_cross_r, sizeof(unsigned char*) * CROSS_ARM_COUNT));
+    unsigned char** h_cross_r = (unsigned char**) malloc(sizeof(unsigned char*) * CROSS_ARM_COUNT);
+    unsigned char* d_cross_memory_r;
+    checkCudaError(cudaMalloc(&d_cross_memory_r, sizeof(unsigned char) * disp_img_sz * CROSS_ARM_COUNT));
+    for (int i = 0; i < CROSS_ARM_COUNT; ++i)
+        h_cross_r[i] = d_cross_memory_r + (i * disp_img_sz);
+    checkCudaError(cudaMemcpy(d_cross_r, h_cross_r, sizeof(unsigned char*) * CROSS_ARM_COUNT, cudaMemcpyHostToDevice));
+    
+    d_ca_cross(d_low_img_r, d_adcensus_cost_r, d_acost_r, h_acost_r, d_acost_memory + disp_cost_sz, d_cross_r, ucd, lcd, usd, lsd, num_disp, num_rows_disp, num_cols_disp, elem_sz);
+    
     cudaFree(d_acost_l);
     cudaFree(d_acost_r);
     cudaFree(d_acost_memory);
@@ -319,16 +375,36 @@ void adcensus_stm_2(unsigned char *img_sbs, float *disp_l, float *disp_r,
 	
 	d_dc_wta(d_adcensus_cost_l, d_disp_l, num_disp, zero_disp, num_rows_disp, num_cols_disp);
     d_dc_wta(d_adcensus_cost_r, d_disp_r, num_disp, zero_disp, num_rows_disp, num_cols_disp);
-    
-    //d_filter_median(d_disp_l, num_rows_disp, num_cols_disp);
-    //d_filter_median(d_disp_r, num_rows_disp, num_cols_disp);
 	
-	cudaFree(d_adcensus_cost_l);
+    cudaFree(d_adcensus_cost_l);
     cudaFree(d_adcensus_cost_r);
     cudaFree(d_adcensus_cost_memory);
     free(h_adcensus_cost_l); 
     free(h_adcensus_cost_r); 
+    
+    //////////////////////////
+    // DISPARITY REFINEMENT //
+    //////////////////////////
 
+/*
+    unsigned char *d_outliers_l, *d_outliers_r;
+    checkCudaError(cudaMalloc(&d_outliers_l, sizeof(unsigned char) * disp_img_sz));
+    checkCudaError(cudaMemset(d_outliers_l, 0, sizeof(unsigned char) * disp_img_sz));
+    checkCudaError(cudaMalloc(&d_outliers_r, sizeof(unsigned char) * disp_img_sz));
+    checkCudaError(cudaMemset(d_outliers_r, 0, sizeof(unsigned char) * disp_img_sz));
+    d_dr_dcc(d_outliers_l, d_outliers_r, d_disp_l, d_disp_r, num_rows_disp, num_cols_disp);
+
+    d_dr_irv(d_disp_l, d_outliers_l, d_cross_l, 10, 0.2, num_rows_disp, num_cols_disp, num_disp, zero_disp, usd, 5);
+    d_dr_irv(d_disp_r, d_outliers_r, d_cross_r, 10, 0.2, num_rows_disp, num_cols_disp, num_disp, zero_disp, usd, 5);
+ */   
+    d_filter_bilateral_1(d_disp_l, 7, 5, 10, num_rows_disp, num_cols_disp, num_disp);
+    d_filter_bilateral_1(d_disp_r, 7, 5, 10, num_rows_disp, num_cols_disp, num_disp);
+	
+    
+    ///////////////////////
+    // DISPARITY UPSCALE //
+    ///////////////////////
+    
     float *d_high_disp_l, *d_high_disp_r;	
     
 	checkCudaError(cudaMalloc(&d_high_disp_l, sizeof(float) * img_sz));
@@ -337,10 +413,6 @@ void adcensus_stm_2(unsigned char *img_sbs, float *disp_l, float *disp_r,
 	tx_disp_scale_kernel<<<grid_sz, block_sz>>>(d_high_disp_l, d_disp_l, num_rows, num_cols, num_rows_disp, num_cols_disp, 1.0f/disp_scale);
 	
 	tx_disp_scale_kernel<<<grid_sz, block_sz>>>(d_high_disp_r, d_disp_r, num_rows, num_cols, num_rows_disp, num_cols_disp, 1.0f/disp_scale);
-
-    
-    d_filter_bilateral_1(d_high_disp_l, 5, 5, 7, num_rows, num_cols, num_disp * (1.0/disp_scale) + 1);
-    d_filter_bilateral_1(d_high_disp_r, 5, 5, 7, num_rows, num_cols, num_disp * (1.0/disp_scale) + 1);
 
     checkCudaError(cudaMemcpy(disp_l, d_high_disp_l, sizeof(float) * img_sz, cudaMemcpyDeviceToHost));
     checkCudaError(cudaMemcpy(disp_r, d_high_disp_r, sizeof(float) * img_sz, cudaMemcpyDeviceToHost));
@@ -405,10 +477,20 @@ void adcensus_stm_2(unsigned char *img_sbs, float *disp_l, float *disp_r,
     cudaFree(d_low_img_l);
     cudaFree(d_low_img_r);
     
+    cudaFree(d_cross_l);
+    cudaFree(d_cross_r);
+    cudaFree(d_cross_memory_l);
+    cudaFree(d_cross_memory_r);
+    free(h_cross_l);
+    free(h_cross_r);
+    //cudaFree(d_outliers_l);
+    //cudaFree(d_outliers_r);
+    
     cudaFree(d_disp_l);
     cudaFree(d_disp_r);
 	cudaFree(d_high_disp_l);
     cudaFree(d_high_disp_r);
+
     
 	cudaFree(d_occl_l);
     cudaFree(d_occl_r);
