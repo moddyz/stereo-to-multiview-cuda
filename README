@@ -1,2 +1,4 @@
-Stereo Imaging Cores 
+Stereo to Multiview Real-time Video Processor 
 CUDA Implementation
+
+Algorithm mostly referenced from "On Building an Accurate Stereo Matching System on Graphics Hardware".
