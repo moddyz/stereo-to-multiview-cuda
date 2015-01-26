@@ -238,6 +238,7 @@ int main(int argc, char** argv)
 	dr_irv(data_disp_r, data_outliers_r, data_cross_r, thresh_s, thresh_h, num_rows, num_cols, num_disp, zero_disp, usd, 1);
     //filter_median(data_disp_l, num_rows, num_cols);
     //filter_median(data_disp_r, num_rows, num_cols);
+    dr_dcc(data_outliers_l, data_outliers_r, data_disp_l, data_disp_r, num_rows, num_cols);
 
 	filter_bilateral_1(data_disp_l, 7, 7, 7, num_rows, num_cols, num_disp);
     filter_bilateral_1(data_disp_r, 7, 7, 7, num_rows, num_cols, num_disp);

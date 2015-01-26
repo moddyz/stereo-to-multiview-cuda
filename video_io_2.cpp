@@ -46,7 +46,7 @@ int main( int argc, char **argv)
     /////////////////////
 
     //printDeviceInfo();
-    if (argc != 16) 
+    if (argc != 17) 
     {
         printf("Place images in img subdir: \n");
         printf("then input file names directly w/o dir extension \n");
@@ -88,7 +88,7 @@ int main( int argc, char **argv)
     printf("Video Frame Count:       %d\n", num_frames); 
     printf("Input Width (SBS):       %d\n", num_cols_sbs); 
     printf("Input Width (Single):    %d\n", num_cols); 
-    printf("Input Height:            %d\n", num_rows); 
+    printf("Input Height:            %d\n", num_rows);
     
     int num_views = atoi(argv[2]);
     float angle = atof(argv[3]);
@@ -104,10 +104,16 @@ int main( int argc, char **argv)
     int lsd = atoi(argv[13]);
     int thresh_s = atoi(argv[14]);
     float thresh_h = atof(argv[15]);
+	float disp_scale = atof(argv[16]);
 
+	int num_cols_disp = disp_scale * num_cols;
+	int num_rows_disp = disp_scale * num_rows;
 
+	printf("Disparity Downscale Factor: %f\n", disp_scale);
     printf("Number of Views:         %d\n", num_views);
     printf("Angle of Attenuator:     %f\n", angle);
+    printf("Disparity Width:         %d\n", num_cols_disp); 
+    printf("Disparity Height:        %d\n", num_rows_disp); 
     printf("Output Width:            %d\n", num_cols_out); 
     printf("Output Height:           %d\n", num_rows_out); 
     printf("Number of Disparities:   %d\n", num_disp);
@@ -125,6 +131,7 @@ int main( int argc, char **argv)
     int display_mode = DISPLAY_MODE_INTERLACED;
     int display_persp = 0;
     int paused = false;
+    int enable_refinement = true;
     
     unsigned char* data_sbs = mat_sbs.data;
             
@@ -148,11 +155,10 @@ int main( int argc, char **argv)
                 vc_sbs.set(CV_CAP_PROP_POS_MSEC, 0);
                 continue;
             }
-        
-            // Process SBS image
+            
             double startTime, endTime;
             startTime = getCPUTime();
-            adcensus_stm(data_sbs, data_disp_l, data_disp_r, data_interlaced, num_rows, num_cols_sbs, num_cols, num_rows_out, num_cols_out, elem_sz, num_views, angle, num_disp, zero_disp, ad_coeff, census_coeff, ucd, lcd, usd, lsd, thresh_s, thresh_h);
+            adcensus_stm_2(data_sbs, data_disp_l, data_disp_r, data_interlaced, num_rows, num_cols_sbs, num_cols, num_rows_out, num_cols_out, num_rows_disp, num_cols_disp, elem_sz, disp_scale, num_views, angle, num_disp, zero_disp, ad_coeff, census_coeff, ucd, lcd, usd, lsd, thresh_s, thresh_h, enable_refinement);
             endTime = getCPUTime();
 
             fprintf( stderr, "CPU time used = %1f\n", (endTime - startTime));
@@ -189,9 +195,27 @@ int main( int argc, char **argv)
 				return 0;
 			case 'p':
                 if (paused == false)
+                {
+                    printf("[[ PAUSED ]]\n");
 				    paused = true;
+                }
                 else
+                {
+                    printf("[[ RESUMED ]]\n");
                     paused = false;
+                }
+                break;
+			case 'r':
+                if (enable_refinement == false)
+                {
+                    printf("[[ DISPARITY REFINEMENT: ENABLED ]]\n");
+				    enable_refinement = true;
+                }
+                else
+                {
+                    printf("[[ DISPARITY REFINEMENT: DISABLED ]]\n");
+                    enable_refinement = false;
+                }
                 break;
             default:
                 break;

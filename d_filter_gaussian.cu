@@ -7,11 +7,11 @@
 #define PI 3.14159265359f
 
 __global__ void filter_gaussian_1_kernel_1(float* img_out, float* img_in,
-                                          float *kernel,
-                                          int radius, float sigma_spatial,
-                                          int num_rows, int num_cols,
-                                          int sm_img_rows, int sm_img_cols, int sm_img_sz, int sm_img_padding,
-                                          int sm_kernel_len, int sm_kernel_sz)
+                                           float *kernel,
+                                           int radius, float sigma_spatial,
+                                           int num_rows, int num_cols,
+                                           int sm_img_rows, int sm_img_cols, int sm_img_sz, int sm_img_padding,
+                                           int sm_kernel_len, int sm_kernel_sz)
 {
     int gx = threadIdx.x + blockIdx.x * blockDim.x;
     int gy = threadIdx.y + blockIdx.y * blockDim.y;

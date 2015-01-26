@@ -47,4 +47,4 @@ __global__ void demux_rgb(unsigned char* chan_r, unsigned char* chan_g, unsigned
     chan_b[tx] = img[tx_e];
 }
 
-#endif
+#end

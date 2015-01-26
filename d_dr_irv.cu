@@ -330,23 +330,12 @@ void dr_irv( float* disp, unsigned char* outliers, unsigned char **cross,
     int sw = pbw + 2 * usd;
     int sh = pbh + 2 * usd;
     int sm_sz = sw * sh;
-   
-    /*
-    startCudaTimer(&timer);
-    dr_irv_pre_h_kernel<<<pre_grid_sz, pre_block_sz>>>(d_disp, d_outliers, d_cross, d_max_disp, d_max_disp_count, d_reliable, num_rows, num_cols, num_disp, zero_disp);
-    stopCudaTimer(&timer, "Disparity Refinement Iterative Region Voting Preprocessor H Kernel");
-    
-    startCudaTimer(&timer);
-    dr_irv_pre_v_kernel<<<pre_grid_sz, pre_block_sz>>>(d_disp, d_outliers, d_cross, d_max_disp, d_max_disp_count, d_reliable, num_rows, num_cols, num_disp, zero_disp);
-    stopCudaTimer(&timer, "Disparity Refinement Iterative Region Voting Preprocessor V Kernel");
-   */ 
-    
-    startCudaTimer(&timer);
-    dr_irv_pre_kernel<<<pre_grid_sz, pre_block_sz, sizeof(float) * sm_sz + sizeof(unsigned char) * sm_sz>>>(d_disp, d_outliers, d_cross, d_max_disp, d_reliable, num_rows, num_cols, num_disp, zero_disp, sw, sh, sm_sz, usd);
-    stopCudaTimer(&timer, "Disparity Refinement Iterative Region Voting Preprocessor HV Kernel");
 
     for (int i = 0; i < iterations; ++i)
     {
+        startCudaTimer(&timer);
+        dr_irv_pre_kernel<<<pre_grid_sz, pre_block_sz, sizeof(float) * sm_sz + sizeof(unsigned char) * sm_sz>>>(d_disp, d_outliers, d_cross, d_max_disp, d_reliable, num_rows, num_cols, num_disp, zero_disp, sw, sh, sm_sz, usd);
+        stopCudaTimer(&timer, "Disparity Refinement Iterative Region Voting Preprocessor HV Kernel");
         startCudaTimer(&timer);
         dr_irv_kernel_3<<<grid_sz, block_sz>>>(d_disp, d_outliers, d_max_disp, d_reliable, thresh_s, thresh_h, num_rows, num_cols, num_disp, zero_disp); 
         stopCudaTimer(&timer, "Disparity Refinement Iterative Region Voting Kernel");
